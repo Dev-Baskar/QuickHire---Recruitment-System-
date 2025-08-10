@@ -596,22 +596,35 @@ nav {
 
 .job-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(5, 1fr); /* 5 cards per row */
   gap: 25px;
-  max-width: 1100px;
-  margin: 40px auto;
+  max-width: 1400px; /* Wider container to fit 5 comfortably */
+  margin: 30px 40px;
   padding: 0 20px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1200px) {
   .job-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr); /* Tablet view */
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .job-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr); /* Mobile landscape */
   }
 }
 
+@media (max-width: 480px) {
+  .job-grid {
+    grid-template-columns: 1fr; /* Mobile portrait */
+  }
+}
+
+
+.view-job{
+    display: flex;
+    align-items: center;
+    margin: 15px auto ;
+    margin-bottom: 80px;
+}
