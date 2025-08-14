@@ -529,8 +529,8 @@ nav {
 .company-logo {
     width: 40px;
     height: 40px;
-    object-fit: contain;
-    border-radius: 50%;
+    object-fit: cover;
+    border-radius: 8px;
     background: #f9f9f9;
     padding: 5px;
 }
@@ -991,14 +991,85 @@ nav {
 /* Ensure job cards from your main style keep spacing tidy if needed */
 .job-card { position: relative; }
 
-#applied-jobs-list p {
+
+#resume-frame {
+  margin-top: 10px;
+  background: #fafafa;
+}
+
+.modal-logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  margin-bottom: 10px;
+}
+
+#applied-jobs-list .job-card {
+  margin-top: 15px;
+  margin-bottom: 16px;
+  padding: 15px;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  background: #fff;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+#applied-jobs-list .job-card img.company-logo {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+}
+
+#applied-jobs-list .job-card .job-desc {
+  margin-top: 4px;
+  color: #555;
+}
+
+
+.view-details-btn {
+  background-color: #007bff; /* Blue */
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-top: 10px;
+  transition: background-color 0.3s ease;
+}
+
+.view-details-btn:hover {
+  background-color: #0056b3;
+}
+
+#applied-jobs-list:only-child,
+#applied-jobs-list:has(p) {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 300px; /* Adjust for how much space you want */
-  color: #444; /* low-black gray */
-  font-size: 16px;
-  font-weight: 500;
+  min-height: 300px;
   text-align: center;
-  margin: 0;
 }
+
+#applied-jobs-list p {
+  font-size: 15px;
+  color: #777;
+}
+
+#applied-jobs-list .job-card {
+  text-align: left; 
+
+#applied-jobs-list .job-desc {
+  font-size: 10px; 
+  line-height: 1.0;
+  color: #333;
+}
+
+#applied-jobs-list 
+  color: #555;
+  margin-top: 8px;
+}
+
+

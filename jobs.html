@@ -242,10 +242,33 @@
 
   <!-- Applied Jobs Tab -->
   <div id="applied-tab" class="tab-content">
-    <div class="jobs-container" id="applied-jobs-list">
+    <div class="jobs-container applied-jobs" id="applied-jobs-list">
       <p>No applied jobs yet.</p>
     </div>
   </div>
+
+<!-- Applied Job Details Modal -->
+<div id="applied-job-modal" class="modal">
+  <div class="modal-content">
+    <span id="applied-close" class="close-btn">&times;</span>
+    <img id="applied-modal-logo" class="company-logo" src="" alt="Company Logo">
+    <h2 id="applied-modal-title"></h2>
+    <h4 id="applied-modal-role"></h4>
+    <p id="applied-modal-desc"></p>
+    <p id="applied-modal-date"></p>
+
+    <h3>Applicant Details</h3>
+    <p><strong>Name:</strong> <span id="applied-modal-name"></span></p>
+    <p><strong>Email:</strong> <span id="applied-modal-email"></span></p>
+    <p><strong>Mobile:</strong> <span id="applied-modal-mobile"></span></p>
+    <p><strong>Skills:</strong> <span id="applied-modal-skills"></span></p>
+    <p><strong>Cover Letter:</strong> <span id="applied-modal-cover"></span></p>
+
+    <button id="view-resume-btn">View Resume</button>
+    
+  </div>
+</div>
+
 </main>
 
 <!-- ===== APPLY MODAL ===== -->

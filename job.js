@@ -55,20 +55,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const appliedClose = document.getElementById("applied-close");
   const viewResumeBtn = document.getElementById("view-resume-btn");
 
-  let currentJobData = {};
+  let currentJobCard = null;
   let uploadedResumeURL = "";
 
   // Open Apply Modal
   applyButtons.forEach(button => {
     button.addEventListener("click", e => {
-      const card = e.target.closest(".job-card");
-      currentJobData = {
-        company: card.querySelector("h3").textContent,
-        title: card.querySelector(".job-title").textContent,
-        description: card.querySelector(".job-desc").textContent,
-        logo: card.querySelector(".company-logo").src
-      };
-      modalJobTitle.textContent = currentJobData.title;
+      currentJobCard = e.target.closest(".job-card");
+      modalJobTitle.textContent = currentJobCard.querySelector(".job-title").textContent;
       applyModal.style.display = "block";
     });
   });
@@ -92,50 +86,44 @@ document.addEventListener("DOMContentLoaded", () => {
       uploadedResumeURL = URL.createObjectURL(resumeFile);
     }
 
-    // Mark original as applied
-    document.querySelectorAll(".job-card").forEach(card => {
-      if (card.querySelector(".job-title").textContent === currentJobData.title) {
-        const btn = card.querySelector(".apply-btn");
-        btn.innerHTML = "&#10003; Applied";
-        btn.disabled = true;
-        btn.classList.add("applied");
-      }
-    });
+    // Change button to Applied
+    const applyBtn = currentJobCard.querySelector(".apply-btn");
+    applyBtn.innerHTML = "&#10003; Applied";
+    applyBtn.disabled = true;
+    applyBtn.classList.add("applied");
 
-    // Build a fresh applied job card
-    const appliedCard = document.createElement("div");
-    appliedCard.classList.add("job-card");
-    appliedCard.innerHTML = `
-      <div class="job-header">
-        <img src="${currentJobData.logo}" alt="${currentJobData.company} Logo" class="company-logo">
-        <div>
-          <h3>${currentJobData.company}</h3>
-          <span class="job-title">${currentJobData.title}</span>
-        </div>
-      </div>
-      <p class="job-desc" style="text-align:left; font-size:16px; color:#333;">${currentJobData.description}</p>
-      <p class="posted-date" style="text-align:left; font-size:15px; color:#555;">Applied on: ${new Date().toLocaleDateString()}</p>
-      <button class="view-details-btn">View Details</button>
-    `;
+    // Clone job card for Applied Jobs tab
+    const jobClone = currentJobCard.cloneNode(true);
+    const btn = jobClone.querySelector(".apply-btn");
+    if (btn) btn.remove(); // Remove original button
 
-    // Store form data for details modal
-    appliedCard.dataset.name = formData.get("fullname");
-    appliedCard.dataset.email = formData.get("email");
-    appliedCard.dataset.mobile = formData.get("mobile");
-    appliedCard.dataset.skills = formData.get("skills");
-    appliedCard.dataset.cover = formData.get("cover");
-    appliedCard.dataset.resume = uploadedResumeURL;
+    // Add view details button
+    const detailsBtn = document.createElement("button");
+    detailsBtn.textContent = "View Details";
+    detailsBtn.classList.add("view-details-btn");
+    jobClone.appendChild(detailsBtn);
 
-    // Add View Details click
-    appliedCard.querySelector(".view-details-btn").addEventListener("click", () => openAppliedModal(appliedCard));
+    // Save form details into dataset for later viewing
+    jobClone.dataset.name = formData.get("fullname");
+    jobClone.dataset.email = formData.get("email");
+    jobClone.dataset.mobile = formData.get("mobile");
+    jobClone.dataset.skills = formData.get("skills");
+    jobClone.dataset.cover = formData.get("cover");
+    jobClone.dataset.resume = uploadedResumeURL;
 
-    // Remove "no jobs" message
+    detailsBtn.addEventListener("click", () => openAppliedModal(jobClone));
+
+    // Remove only the "No applied jobs yet" message, not the existing cards
     const noJobsMsg = appliedJobsList.querySelector("p");
-    if (noJobsMsg) noJobsMsg.remove();
+    if (noJobsMsg) {
+      noJobsMsg.remove();
+    }
 
-    appliedJobsList.appendChild(appliedCard);
+    appliedJobsList.appendChild(jobClone);
+
     updateAppliedJobsLayout();
 
+    // Close modal and reset form
     applyModal.style.display = "none";
     applyForm.reset();
   });
@@ -156,7 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
     appliedModal.style.display = "block";
   }
 
-  // View Resume in New Tab
+  // View Resume in New Tab only
   viewResumeBtn.addEventListener("click", () => {
     const resumeURL = appliedModal.dataset.resume;
     if (resumeURL) {
@@ -166,13 +154,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Close applied modal
   appliedClose.addEventListener("click", () => {
     appliedModal.style.display = "none";
   });
 
-  // Layout handling
+  // ===== Update layout based on job count =====
   function updateAppliedJobsLayout() {
     const hasJobs = appliedJobsList.querySelectorAll('.job-card').length > 0;
+
     if (!hasJobs) {
       appliedJobsList.style.display = "flex";
       appliedJobsList.style.justifyContent = "center";
@@ -182,8 +172,22 @@ document.addEventListener("DOMContentLoaded", () => {
       appliedJobsList.style.display = "grid";
       appliedJobsList.style.gridTemplateColumns = "repeat(3, 1fr)";
       appliedJobsList.style.gap = "20px";
+
+      // Force text alignment left for description & date
+      appliedJobsList.querySelectorAll(".job-desc").forEach(desc => {
+        desc.style.textAlign = "left";
+        desc.style.fontSize = "16px";
+        desc.style.color = "#333";
+      });
+
+      appliedJobsList.querySelectorAll(".posted-date").forEach(date => {
+        date.style.textAlign = "left";
+        date.style.fontSize = "15px";
+        date.style.color = "#555";
+      });
     }
   }
 
+  // ===== Initial check =====
   updateAppliedJobsLayout();
 });
