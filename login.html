@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>QuickHire Login</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1e90ff, #00bfff);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 20px;
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .container {
+      flex: 1;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 50px;
+    }
+
+    .role-selection {
+      display: flex;
+      flex-direction: row;
+      gap: 25px;
+      align-items: flex-end;
+    }
+
+    .role-card {
+      background: #fff;
+      padding: 40px 20px;
+      border-radius: 12px;
+      box-shadow: 0px 8px 20px rgba(0,0,0,0.15);
+      width: 135px;
+      height: 100px;
+      text-align: center;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .role-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0px 12px 25px rgba(0,0,0,0.2);
+    }
+
+    .role-card p {
+      margin: 0;
+      font-size: 16px;
+      color: #444;
+    }
+
+    .role-card h2 {
+      margin: 10px 0 0;
+      font-size: 26px;
+      font-weight: bold;
+      color: #1e90ff;
+    }
+
+    .login-box {
+      max-width: 320px;
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0px 8px 20px rgba(0,0,0,0.2);
+      display: none;
+    }
+
+    /* Header Row with Arrow + Title */
+    .login-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .back-arrow {
+      position: absolute;
+      left: 0;
+      font-size: 30px;
+      color: #1e90ff;
+      cursor: pointer;
+      border: none;
+      background: none;
+    }
+
+    .login-header h2 {
+      margin: 0;
+      font-size: 20px;
+      color: #333;
+    }
+
+    input {
+      width: 91%;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+
+    input:focus {
+      border-color: #1e90ff;
+      box-shadow: 0px 0px 5px rgba(30,144,255,0.5);
+      outline: none;
+    }
+
+    .login-button {
+      width: 100%;
+      padding: 12px;
+      background: #1e90ff;
+      color: white;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .login-button:hover {
+      background: #0d6efd;
+    }
+
+    .note {
+      margin-top: 15px;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .note a {
+      color: #1e90ff;
+      text-decoration: none;
+    }
+
+    .note a:hover {
+      text-decoration: underline;
+    }
+
+    .popup {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #28a745;
+      color: white;
+      padding: 15px 20px;
+      border-radius: 6px;
+      box-shadow: 0px 5px 15px rgba(0,0,0,0.2);
+      font-size: 16px;
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: all 0.5s ease;
+      z-index: 9999;
+    }
+
+    .popup.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <header>QuickHire</header>
+
+  <div class="container">
+    <!-- Role Selection -->
+    <div class="role-selection" id="roleSelection">
+      <div class="role-card" onclick="selectRole('recruiter')">
+        <p>Are you a</p>
+        <h2>Recruiter</h2>
+      </div>
+      <div class="role-card" onclick="selectRole('jobseeker')">
+        <p>Are you a</p>
+        <h2>Job Seeker</h2>
+      </div>
+    </div>
+
+    <!-- Login Box -->
+    <div class="login-box" id="loginBox">
+      <div class="login-header">
+        <button class="back-arrow" onclick="goBack()">&#8592;</button>
+        <h2 id="loginTitle">Login</h2>
+      </div>
+      <input type="text" id="username" placeholder="Username">
+      <input type="password" id="password" placeholder="Password">
+      <button class="login-button" onclick="login()">Login</button>
+      <p class="note">Don’t have an account? <a href="register.html">Register here</a></p>
+    </div>
+  </div>
+
+  <div id="popup" class="popup">Login successful!</div>
+
+  <script>
+    let selectedRole = null;
+
+    function selectRole(role) {
+      selectedRole = role;
+      document.getElementById("roleSelection").style.display = "none"; 
+      document.getElementById("loginBox").style.display = "block";     
+      document.getElementById("loginTitle").innerText =
+        role === "recruiter" ? "Recruiter Login" : "Job Seeker Login";
+    }
+
+    function goBack() {
+      selectedRole = null;
+      document.getElementById("loginBox").style.display = "none";
+      document.getElementById("roleSelection").style.display = "flex";
+    }
+
+    function showPopup(message) {
+      const popup = document.getElementById("popup");
+      popup.innerText = message;
+      popup.classList.add("show");
+      setTimeout(() => {
+        popup.classList.remove("show");
+      }, 3000);
+    }
+
+    async function login() {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+
+      if (!selectedRole) {
+        alert("Please choose Recruiter or Job Seeker first.");
+        return;
+      }
+
+      const res = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        if (data.role !== selectedRole) {
+          alert("❌ Wrong role selected. Please choose correctly.");
+          return;
+        }
+
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("role", data.role);
+        localStorage.setItem("userId", data.id);
+
+        showPopup("✅ Login successful!");
+        setTimeout(() => {
+          if (selectedRole === "recruiter") {
+            window.location.href = "recruiter-dashboard.html";
+          } else {
+            window.location.href = "index.html";
+          }
+        }, 1500);
+      } else {
+        alert("❌ Invalid login. Check username/password.");
+      }
+    }
+  </script>
+</body>
+</html>

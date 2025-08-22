@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recruiter Dashboard - QuickHire</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary: #0d6efd;
+      --primary-dark: #0a58ca;
+      --bg-light: #f8f9fa;
+      --bg-dark: #1f2a36;
+      --text: #333;
+      --text-light: #fff;
+      --card-bg: #fff;
+      --shadow: 0 2px 8px rgba(0,0,0,0.1);
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      display: flex;
+      height: 100vh;
+      background: var(--bg-light);
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 240px;
+      background: var(--bg-dark);
+      color: var(--text-light);
+      display: flex;
+      flex-direction: column;
+      padding: 20px 0;
+    }
+    .sidebar h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 20px;
+      color: var(--primary);
+    }
+    .nav {
+      list-style: none;
+      flex-grow: 1;
+    }
+    .nav li {
+      padding: 14px 24px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .nav li:hover,
+    .nav li.active {
+      background: var(--primary);
+    }
+
+    /* Main content */
+    .main {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    .header {
+      height: 60px;
+      background: #fff;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+    }
+    .header h1 {
+      font-size: 20px;
+      color: var(--text);
+    }
+    .user {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+    .user img {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid var(--primary);
+    }
+
+    /* Dashboard content */
+    .content {
+      padding: 20px;
+      overflow-y: auto;
+      flex-grow: 1;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      text-align: center;
+    }
+    .card h3 {
+      font-size: 16px;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    .card span {
+      font-size: 28px;
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    /* Charts */
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .chart-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+    }
+    .chart-card h3 {
+      font-size: 16px;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <h2>QuickHire</h2>
+    <ul class="nav">
+      <li class="active">Dashboard</li>
+      <li>Job Posts</li>
+      <li>Applications</li>
+      <li>Meetings</li>
+      <li>SAS Process</li>
+      <li>Invite History</li>
+      <li>Company List</li>
+      <li>Company Verification</li>
+      <li>Admin</li>
+      <li>Account</li>
+    </ul>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="header">
+      <h1>Dashboard</h1>
+      <div class="user">
+        <span>Recruiter</span>
+        <img src="https://via.placeholder.com/32" alt="User">
+      </div>
+    </header>
+
+    <section class="content">
+      <!-- KPI Cards -->
+      <div class="cards">
+        <div class="card"><h3>Job Posts</h3><span>12</span></div>
+        <div class="card"><h3>Applications</h3><span>34</span></div>
+        <div class="card"><h3>Companies</h3><span>5</span></div>
+        <div class="card"><h3>Logins</h3><span>8</span></div>
+        <div class="card"><h3>Edit Requests</h3><span>2</span></div>
+      </div>
+
+      <!-- Charts -->
+      <div class="charts">
+        <div class="chart-card">
+          <h3>Applications per Job</h3>
+          <canvas id="barChart"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Job Posts Over Time</h3>
+          <canvas id="lineChart"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>Application Status</h3>
+          <canvas id="pieChart"></canvas>
+        </div>
+      </div>
+    </section>
+  </div>
+
+ <script>
+const API_BASE = "http://localhost:5000/api/dashboard";
+
+// Load KPI cards
+async function loadStats() {
+  const res = await fetch(`${API_BASE}/stats`);
+  const data = await res.json();
+  if (data.success) {
+    document.querySelector(".card:nth-child(1) span").textContent = data.stats.jobPosts;
+    document.querySelector(".card:nth-child(2) span").textContent = data.stats.applications;
+    document.querySelector(".card:nth-child(3) span").textContent = data.stats.companies;
+    document.querySelector(".card:nth-child(4) span").textContent = data.stats.logins;
+  }
+}
+
+// Load bar chart (applications per job)
+async function loadApplicationsPerJob() {
+  const res = await fetch(`${API_BASE}/applications-per-job`);
+  const data = await res.json();
+  if (data.success) {
+    new Chart(document.getElementById("barChart"), {
+      type: "bar",
+      data: {
+        labels: data.data.map(r => r.jobTitle),
+        datasets: [{
+          label: "Applications",
+          data: data.data.map(r => r.applications),
+          backgroundColor: "rgba(13,110,253,0.7)"
+        }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+  }
+}
+
+// Load line chart (job posts over time)
+async function loadJobPostsOverTime() {
+  const res = await fetch(`${API_BASE}/job-posts-over-time`);
+  const data = await res.json();
+  if (data.success) {
+    new Chart(document.getElementById("lineChart"), {
+      type: "line",
+      data: {
+        labels: data.data.map(r => r.month),
+        datasets: [{
+          label: "Job Posts",
+          data: data.data.map(r => r.count),
+          borderColor: "rgba(13,110,253,1)",
+          backgroundColor: "rgba(13,110,253,0.2)",
+          fill: true,
+          tension: 0.3
+        }]
+      }
+    });
+  }
+}
+
+// Load pie chart (application status)
+async function loadApplicationStatus() {
+  const res = await fetch(`${API_BASE}/application-status`);
+  const data = await res.json();
+  if (data.success) {
+    new Chart(document.getElementById("pieChart"), {
+      type: "pie",
+      data: {
+        labels: data.data.map(r => r.status),
+        datasets: [{
+          data: data.data.map(r => r.count),
+          backgroundColor: ["#198754", "#dc3545", "#ffc107"]
+        }]
+      }
+    });
+  }
+}
+
+// Initialize dashboard
+loadStats();
+loadApplicationsPerJob();
+loadJobPostsOverTime();
+loadApplicationStatus();
+</script>
+
+
+</body>
+</html>

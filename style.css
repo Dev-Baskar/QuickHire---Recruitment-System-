@@ -1022,11 +1022,11 @@ nav {
   object-fit: contain;
 }
 
-#applied-jobs-list .job-card .job-desc {
+/* #applied-jobs-list .job-card .job-desc {
   margin-top: 4px;
   color: #555;
 }
-
+ */
 
 .view-details-btn {
   background-color: #007bff; /* Blue */
@@ -1059,17 +1059,15 @@ nav {
 }
 
 #applied-jobs-list .job-card {
-  text-align: left; 
+  text-align: left;
+}
 
-#applied-jobs-list .job-desc {
-  font-size: 10px; 
-  line-height: 1.0;
+.job-desc {
+  font-size: 13px;
+  line-height: 1.4;
   color: #333;
+  margin-top: 6px;
 }
 
-#applied-jobs-list 
-  color: #555;
-  margin-top: 8px;
-}
 
 

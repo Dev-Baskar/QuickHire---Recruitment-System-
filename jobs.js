@@ -1,189 +1,104 @@
-// ===== TAB SWITCHING ===== 
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+document.addEventListener("DOMContentLoaded", async () => {
+  const jobList = document.getElementById("job-list");
+  const locSelect = document.getElementById("filter-location");
 
-    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-    document.getElementById(btn.dataset.tab).classList.add('active');
+  // ===== Fetch Jobs from Backend =====
+  async function loadJobs() {
+    const res = await fetch("http://localhost:5000/api/jobs");
+    const jobs = await res.json();
 
-    document.getElementById('filters').style.display =
-      btn.dataset.tab === 'applied-tab' ? 'none' : 'flex';
-  });
-});
+    // Populate location filter
+    const locations = [...new Set(jobs.map(j => j.location))];
+    locSelect.innerHTML = `<option value="">All Locations</option>` + 
+      locations.map(l => `<option value="${l}">${l}</option>`).join("");
 
-// ===== POPULATE LOCATION FILTER =====
-(function populateLocations() {
-  const locSelect = document.getElementById('filter-location');
-  const locations = new Set();
-  document.querySelectorAll('#job-list .job-card').forEach(card => {
-    locations.add(card.dataset.location);
-  });
-  locations.forEach(loc => {
-    locSelect.innerHTML += `<option value="${loc}">${loc}</option>`;
-  });
-})();
+    renderJobs(jobs);
+  }
 
-// ===== FILTER JOBS =====
-document.querySelectorAll('.filters select').forEach(select => {
-  select.addEventListener('change', () => {
-    const loc = document.getElementById('filter-location').value;
-    const typ = document.getElementById('filter-type').value;
-    const days = document.getElementById('filter-date').value;
+  // ===== Render Job Cards =====
+  function renderJobs(jobs) {
+    jobList.innerHTML = jobs.map(job => `
+      <div class="job-card" 
+           data-location="${job.location}" 
+           data-type="${job.job_type}"
+           data-id="${job.id}">
+        <div class="job-header">
+          <div>
+            <h3>${job.recruiter}</h3>
+            <span class="job-title">${job.title}</span>
+          </div>
+        </div>
+        <p class="job-desc">${job.description}</p>
+        <p class="posted-date">${new Date(job.created_at).toLocaleDateString()}</p>
+        <button class="apply-btn">Apply</button>
+      </div>
+    `).join("");
 
-    document.querySelectorAll('#job-list .job-card').forEach(card => {
-      const matchLoc = !loc || card.dataset.location === loc;
-      const matchType = !typ || card.dataset.type === typ;
-      const matchDate =
-        !days ||
-        ((new Date() - new Date(card.dataset.date)) / (1000 * 60 * 60 * 24) <= parseInt(days));
+    attachApplyEvents();
+  }
 
-      card.style.display = matchLoc && matchType && matchDate ? 'block' : 'none';
-    });
-  });
-});
-
-// ===== APPLIED JOBS FUNCTIONALITY =====
-document.addEventListener("DOMContentLoaded", () => {
-  const applyButtons = document.querySelectorAll(".apply-btn");
+  // ===== Apply Modal =====
   const applyModal = document.getElementById("apply-modal");
   const applyForm = document.getElementById("apply-form");
   const modalJobTitle = document.getElementById("modal-job-title");
-  const appliedJobsList = document.getElementById("applied-jobs-list");
+  let currentJobId = null;
 
-  const appliedModal = document.getElementById("applied-job-modal");
-  const appliedClose = document.getElementById("applied-close");
-  const viewResumeBtn = document.getElementById("view-resume-btn");
-
-  let currentJobData = {};
-  let uploadedResumeURL = "";
-
-  // Open Apply Modal
-  applyButtons.forEach(button => {
-    button.addEventListener("click", e => {
-      const card = e.target.closest(".job-card");
-      currentJobData = {
-        company: card.querySelector("h3").textContent,
-        title: card.querySelector(".job-title").textContent,
-        description: card.querySelector(".job-desc").textContent,
-        logo: card.querySelector(".company-logo").src
-      };
-      modalJobTitle.textContent = currentJobData.title;
-      applyModal.style.display = "block";
+  function attachApplyEvents() {
+    document.querySelectorAll(".apply-btn").forEach(btn => {
+      btn.addEventListener("click", e => {
+        const card = e.target.closest(".job-card");
+        currentJobId = card.dataset.id;
+        modalJobTitle.textContent = card.querySelector(".job-title").textContent;
+        applyModal.style.display = "block";
+      });
     });
+  }
+
+  document.querySelector(".close-btn").addEventListener("click", () => {
+    applyModal.style.display = "none";
   });
 
-  // Close Modals
-  document.querySelectorAll(".close-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      applyModal.style.display = "none";
-      appliedModal.style.display = "none";
-    });
-  });
-
-  // Submit Application
-  applyForm.addEventListener("submit", e => {
+  // ===== Submit Application =====
+  applyForm.addEventListener("submit", async e => {
     e.preventDefault();
 
     const formData = new FormData(applyForm);
-    const resumeFile = formData.get("resume");
+    const seekerId = localStorage.getItem("userId"); // from login
 
-    if (resumeFile) {
-      uploadedResumeURL = URL.createObjectURL(resumeFile);
-    }
+    const application = {
+      job_id: currentJobId,
+      seeker_id: seekerId,
+      cover_letter: formData.get("cover"),
+      resume: formData.get("resume")?.name || "" // basic handling for now
+    };
 
-    // Mark original as applied
-    document.querySelectorAll(".job-card").forEach(card => {
-      if (card.querySelector(".job-title").textContent === currentJobData.title) {
-        const btn = card.querySelector(".apply-btn");
-        btn.innerHTML = "&#10003; Applied";
-        btn.disabled = true;
-        btn.classList.add("applied");
-      }
+    await fetch("http://localhost:5000/api/applications", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(application)
     });
 
-    // Build a fresh applied job card
-    const appliedCard = document.createElement("div");
-    appliedCard.classList.add("job-card");
-    appliedCard.innerHTML = `
-      <div class="job-header">
-        <img src="${currentJobData.logo}" alt="${currentJobData.company} Logo" class="company-logo">
-        <div>
-          <h3>${currentJobData.company}</h3>
-          <span class="job-title">${currentJobData.title}</span>
-        </div>
-      </div>
-      <p class="job-desc" style="text-align:left; font-size:16px; color:#333;">${currentJobData.description}</p>
-      <p class="posted-date" style="text-align:left; font-size:15px; color:#555;">Applied on: ${new Date().toLocaleDateString()}</p>
-      <button class="view-details-btn">View Details</button>
-    `;
-
-    // Store form data for details modal
-    appliedCard.dataset.name = formData.get("fullname");
-    appliedCard.dataset.email = formData.get("email");
-    appliedCard.dataset.mobile = formData.get("mobile");
-    appliedCard.dataset.skills = formData.get("skills");
-    appliedCard.dataset.cover = formData.get("cover");
-    appliedCard.dataset.resume = uploadedResumeURL;
-
-    // Add View Details click
-    appliedCard.querySelector(".view-details-btn").addEventListener("click", () => openAppliedModal(appliedCard));
-
-    // Remove "no jobs" message
-    const noJobsMsg = appliedJobsList.querySelector("p");
-    if (noJobsMsg) noJobsMsg.remove();
-
-    appliedJobsList.appendChild(appliedCard);
-    updateAppliedJobsLayout();
-
+    alert("Application submitted!");
     applyModal.style.display = "none";
     applyForm.reset();
   });
 
-  // Open Applied Job Details Modal
-  function openAppliedModal(jobCard) {
-    document.getElementById("applied-modal-logo").src = jobCard.querySelector(".company-logo").src;
-    document.getElementById("applied-modal-title").textContent = jobCard.querySelector("h3").textContent;
-    document.getElementById("applied-modal-role").textContent = jobCard.querySelector(".job-title").textContent;
-    document.getElementById("applied-modal-desc").textContent = jobCard.querySelector(".job-desc").textContent;
-    document.getElementById("applied-modal-name").textContent = jobCard.dataset.name;
-    document.getElementById("applied-modal-email").textContent = jobCard.dataset.email;
-    document.getElementById("applied-modal-mobile").textContent = jobCard.dataset.mobile;
-    document.getElementById("applied-modal-skills").textContent = jobCard.dataset.skills;
-    document.getElementById("applied-modal-cover").textContent = jobCard.dataset.cover;
-    appliedModal.dataset.resume = jobCard.dataset.resume;
+  // ===== Filters =====
+  document.querySelectorAll('.filters select').forEach(select => {
+    select.addEventListener('change', async () => {
+      const res = await fetch("http://localhost:5000/api/jobs");
+      let jobs = await res.json();
 
-    appliedModal.style.display = "block";
-  }
+      const loc = document.getElementById('filter-location').value;
+      const typ = document.getElementById('filter-type').value;
 
-  // View Resume in New Tab
-  viewResumeBtn.addEventListener("click", () => {
-    const resumeURL = appliedModal.dataset.resume;
-    if (resumeURL) {
-      window.open(resumeURL, "_blank");
-    } else {
-      alert("No resume uploaded.");
-    }
+      if (loc) jobs = jobs.filter(j => j.location === loc);
+      if (typ) jobs = jobs.filter(j => j.job_type === typ);
+
+      renderJobs(jobs);
+    });
   });
 
-  appliedClose.addEventListener("click", () => {
-    appliedModal.style.display = "none";
-  });
-
-  // Layout handling
-  function updateAppliedJobsLayout() {
-    const hasJobs = appliedJobsList.querySelectorAll('.job-card').length > 0;
-    if (!hasJobs) {
-      appliedJobsList.style.display = "flex";
-      appliedJobsList.style.justifyContent = "center";
-      appliedJobsList.style.alignItems = "center";
-      appliedJobsList.innerHTML = '<p>No applied jobs yet.</p>';
-    } else {
-      appliedJobsList.style.display = "grid";
-      appliedJobsList.style.gridTemplateColumns = "repeat(3, 1fr)";
-      appliedJobsList.style.gap = "20px";
-    }
-  }
-
-  updateAppliedJobsLayout();
+  // ===== Initial Load =====
+  loadJobs();
 });
