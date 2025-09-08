@@ -9,7 +9,7 @@
 
   <style>
     :root {
-      --primary: #1a73e8; /* More vibrant blue */
+      --primary: #1a73e8;
       --secondary: #007BFF;
       --dark: #263238;
       --light: #ECEFF1;
@@ -22,10 +22,9 @@
       --radius: 8px;
       --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
-
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: "Segoe UI", Roboto, sans-serif; display: flex; height: 100vh; background: var(--light); color: var(--text); }
-    .sidebar { width: 205px; /* Reduced width */ background: var(--dark); color: #fff; display: flex; flex-direction: column; padding: 20px 0; box-shadow: var(--shadow); }
+    .sidebar { width: 205px; background: var(--dark); color: #fff; display: flex; flex-direction: column; padding: 20px 0; box-shadow: var(--shadow); }
     .sidebar h2 { text-align: center; margin-bottom: 20px; font-size: 24px; color: var(--primary); font-weight: 700; }
     .nav { list-style: none; flex-grow: 1; }
     .nav li { padding: 14px 24px; cursor: pointer; transition: 0.2s; }
@@ -210,7 +209,7 @@
 <script>
 const API_BASE = "http://localhost:5000/api/job_posts";
 const recruiter_id = 1;
-let currentJobId = null; // Changed global variable name for clarity
+let currentJobId = null;
 
 // Toast
 function showToast(message, type="info"){
@@ -229,13 +228,17 @@ function previewLogo(e){
 }
 
 function openModal(job=null) {
-  const saveBtn = document.getElementById("saveJobBtn");
-  currentJobId = job ? job.id : null;
-  saveBtn.setAttribute("data-job-id", currentJobId);
-
   document.getElementById("jobModal").style.display="flex";
   document.getElementById("modalTitle").innerText= job ? "Edit Job Post" : "Add Job Post";
   
+  const saveBtn = document.getElementById("saveJobBtn");
+  if (job) {
+    currentJobId = job.id;
+    saveBtn.setAttribute("data-job-id", currentJobId);
+  } else {
+    currentJobId = null;
+    saveBtn.removeAttribute("data-job-id");
+  }
 
   document.getElementById("companyName").value=job?.company||"";
   document.getElementById("jobTitle").value=job?.title||"";
@@ -265,7 +268,7 @@ function closeModal(){
   document.getElementById("jobModal").style.display="none";
   document.getElementById("jobLogo").value="";
   document.getElementById("logoPreview").style.display="none";
-  document.getElementById("saveJobBtn").setAttribute("data-job-id", ""); // Clear the data attribute
+  document.getElementById("saveJobBtn").removeAttribute("data-job-id");
 }
 
 function closeView(){document.getElementById("viewModal").style.display="none";}
