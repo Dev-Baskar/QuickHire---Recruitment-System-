@@ -88,7 +88,7 @@
     .toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
     .toast { padding: 12px 18px; border-radius: 6px; color: #fff; font-size: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); animation: fadeInOut 3s forwards; }
     .toast.success { background: var(--success); }
-    .toast.info { background: var(--primary); }
+    .toast.info { background: var(--primary); } 
     .toast.error { background: var(--danger); }
     @keyframes fadeInOut { 0% { opacity: 0; transform: translateY(-10px);} 10%{opacity:1;transform:translateY(0);} 90%{opacity:1;} 100%{opacity:0;transform:translateY(-10px);} }
 
@@ -186,7 +186,7 @@
         <div class="checkbox-row"><label class="checkbox-label"><input type="checkbox" id="relocate" />Willing to Relocate Required</label></div>
       </div>
       <div class="modal-actions">
-        <button class="btn" onclick="saveJob()">Save</button>
+        <button class="btn" id="saveJobBtn">Save</button>
       </div>
     </div>
   </div>
@@ -210,8 +210,7 @@
 <script>
 const API_BASE = "http://localhost:5000/api/job_posts";
 const recruiter_id = 1;
-let editingJobId = null;
-let deleteJobId = null;
+let currentJobId = null; // Changed global variable name for clarity
 
 // Toast
 function showToast(message, type="info"){
@@ -230,9 +229,13 @@ function previewLogo(e){
 }
 
 function openModal(job=null) {
+  const saveBtn = document.getElementById("saveJobBtn");
+  currentJobId = job ? job.id : null;
+  saveBtn.setAttribute("data-job-id", currentJobId);
+
   document.getElementById("jobModal").style.display="flex";
   document.getElementById("modalTitle").innerText= job ? "Edit Job Post" : "Add Job Post";
-  editingJobId= job ? job.id : null;
+  
 
   document.getElementById("companyName").value=job?.company||"";
   document.getElementById("jobTitle").value=job?.title||"";
@@ -262,7 +265,7 @@ function closeModal(){
   document.getElementById("jobModal").style.display="none";
   document.getElementById("jobLogo").value="";
   document.getElementById("logoPreview").style.display="none";
-  editingJobId = null; // reset after save/close
+  document.getElementById("saveJobBtn").setAttribute("data-job-id", ""); // Clear the data attribute
 }
 
 function closeView(){document.getElementById("viewModal").style.display="none";}
@@ -304,41 +307,48 @@ async function loadJobs(){
   });
 }
 
-async function saveJob(){
-  const formData=new FormData();
-  formData.append("recruiter_id",recruiter_id);
-  formData.append("company",document.getElementById("companyName").value);
-  formData.append("title",document.getElementById("jobTitle").value);
-  formData.append("location",document.getElementById("jobLocation").value);
-  formData.append("job_type",document.getElementById("jobType").value);
-  formData.append("package_ctc",document.getElementById("package").value);
-  formData.append("status",document.getElementById("status").value);
-  formData.append("description",document.getElementById("jobDesc").value);
-  formData.append("skills",document.getElementById("skills").value);
-  formData.append("relocate",document.getElementById("relocate").checked?"Yes":"No");
-  formData.append("crit10",document.getElementById("crit10").value);
-  formData.append("crit12",document.getElementById("crit12").value);
-  formData.append("critUg",document.getElementById("critUg").value);
-  formData.append("expMin",document.getElementById("expMin").value);
-  formData.append("expMax",document.getElementById("expMax").value);
+document.getElementById("saveJobBtn").addEventListener("click", async () => {
+    const jobID = document.getElementById("saveJobBtn").getAttribute("data-job-id");
+    const isEditing = !!jobID;
 
-  const logoFile=document.getElementById("jobLogo").files[0];
-  if(logoFile) formData.append("logo",logoFile);
-  
-  const method=editingJobId?"PUT":"POST";
-  const url=editingJobId?`${API_BASE}/${editingJobId}?recruiter_id=${recruiter_id}`:API_BASE;
+    const formData = new FormData();
+    formData.append("recruiter_id", recruiter_id);
+    formData.append("company", document.getElementById("companyName").value);
+    formData.append("title", document.getElementById("jobTitle").value);
+    formData.append("location", document.getElementById("jobLocation").value);
+    formData.append("job_type", document.getElementById("jobType").value);
+    formData.append("package_ctc", document.getElementById("package").value);
+    formData.append("status", document.getElementById("status").value);
+    formData.append("description", document.getElementById("jobDesc").value);
+    formData.append("skills", document.getElementById("skills").value);
+    formData.append("relocate", document.getElementById("relocate").checked ? "Yes" : "No");
+    formData.append("crit10", document.getElementById("crit10").value);
+    formData.append("crit12", document.getElementById("crit12").value);
+    formData.append("critUg", document.getElementById("critUg").value);
+    formData.append("expMin", document.getElementById("expMin").value);
+    formData.append("expMax", document.getElementById("expMax").value);
 
-  const res = await fetch(url,{method,body:formData});
-  const data = await res.json();
+    const logoFile = document.getElementById("jobLogo").files[0];
+    if (logoFile) {
+        formData.append("logo", logoFile);
+    }
+    
+    const method = isEditing ? "PUT" : "POST";
+    const url = isEditing ? `${API_BASE}/${jobID}?recruiter_id=${recruiter_id}` : API_BASE;
+    
+    const res = await fetch(url, { method, body: formData });
+    const data = await res.json();
 
-  if(data.success){
-    closeModal();
-    loadJobs();
-    showToast(editingJobId ? "Job Updated Successfully" : "Job Posted Successfully","success");
-  }else{
-    showToast(data.message || "Error","error");
-  }
-}
+    if (data.success) {
+        closeModal();
+        loadJobs();
+        const toastType = isEditing ? "info" : "success"; 
+        const toastMessage = isEditing ? "Job Updated Successfully" : "Job Posted Successfully";
+        showToast(toastMessage, toastType);
+    } else {
+        showToast(data.message || "Error", "error");
+    }
+});
 
 function viewJob(job){
   const modal=document.getElementById("viewModal");
