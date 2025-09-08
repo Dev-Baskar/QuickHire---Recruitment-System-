@@ -5,92 +5,111 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Recruiter - Job Posts | QuickHire</title>
 
-  <!-- Font Awesome for action icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   <style>
     :root {
-      --primary: #0d6efd;
-      --dark: #1f2a36;
-      --light: #f8f9fa;
+      --primary: #1a73e8; /* More vibrant blue */
+      --secondary: #007BFF;
+      --dark: #263238;
+      --light: #ECEFF1;
       --card-bg: #fff;
-      --text: #333;
+      --text: #455A64;
+      --success: #28a745;
+      --danger: #dc3545;
+      --warning: #ffc107;
+      --info: #17a2b8;
       --radius: 8px;
-      --shadow: 0 2px 8px rgba(0,0,0,0.1);
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: "Segoe UI", Roboto, sans-serif; display: flex; height: 100vh; background: var(--light); }
-    .sidebar { width: 240px; background: var(--dark); color: #fff; display: flex; flex-direction: column; padding: 20px 0; }
-    .sidebar h2 { text-align: center; margin-bottom: 20px; font-size: 20px; color: var(--primary); }
+    body { font-family: "Segoe UI", Roboto, sans-serif; display: flex; height: 100vh; background: var(--light); color: var(--text); }
+    .sidebar { width: 205px; /* Reduced width */ background: var(--dark); color: #fff; display: flex; flex-direction: column; padding: 20px 0; box-shadow: var(--shadow); }
+    .sidebar h2 { text-align: center; margin-bottom: 20px; font-size: 24px; color: var(--primary); font-weight: 700; }
     .nav { list-style: none; flex-grow: 1; }
     .nav li { padding: 14px 24px; cursor: pointer; transition: 0.2s; }
-    .nav li:hover, .nav li.active { background: var(--primary); }
+    .nav li:hover, .nav li.active { background: #37474F; border-left: 4px solid var(--primary); }
     .main { flex-grow: 1; display: flex; flex-direction: column; }
     .header { height: 60px; background: #fff; box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center; padding: 0 20px; }
-    .header h1 { font-size: 20px; color: var(--text); }
+    .header h1 { font-size: 24px; color: var(--text); }
     .content { padding: 20px; overflow-y: auto; }
     table { width: 100%; border-collapse: collapse; background: var(--card-bg); box-shadow: var(--shadow); border-radius: var(--radius); overflow: hidden; }
-    th, td { padding: 12px 15px; text-align: center; border-bottom: 1px solid #eee; vertical-align: middle; }
-    th { background: var(--primary); color: #fff; }
-    tr:hover { background: #f1f5ff; }
-    .company-cell { display: flex; align-items: center; justify-content: center; gap: 8px; }
+    th, td { padding: 12px 15px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    th { background: var(--primary); color: #fff; font-weight: 500; text-align: center; } 
+    
+    td { text-align: center; } 
+    td.company-cell-wrapper { text-align: left; }
+
+    tr:hover { background: #F5F5F5; }
+
+    .company-cell { display: flex; align-items: center; gap: 8px; }
     .company-logo { width: 40px; height: 40px; border-radius: 50%; object-fit: contain; border: 1px solid #ddd; }
-    .company-name { font-size: 12px; font-weight: 600; color: #222; }
-    .btn { background: var(--primary); color: #fff; border: none; padding: 8px; border-radius: var(--radius); cursor: pointer; transition: 0.2s; font-size: 14px; }
+    .company-name { font-size: 14px; font-weight: 600; color: #222; }
+
+    .actions { text-align: center; }
+    .action-group { display: inline-flex; justify-content: center; align-items: center; gap: 4px; }
+    .btn { background: var(--primary); color: #fff; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 14px; }
     .btn:hover { background: #0a58ca; }
-    .btn-action { border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 14px; color: #fff; }
-    .btn-action.view { background: #17a2b8; }
-    .btn-action.edit { background: #ffc107; color: #222; }
-    .btn-action.delete { background: #dc3545; }
+    .btn-action { border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; color: #fff; }
+    .btn-action.view { background: var(--info); }
+    .btn-action.edit { background: var(--warning); color: #222; }
+    .btn-action.delete { background: var(--danger); }
     .btn-action:hover { opacity: 0.85; }
+
     .status { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; color: #fff; }
-    .status-open { background: #28a745; }
-    .status-closed { background: #dc3545; }
-    .status-hold { background: #ffc107; color: #222; }
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; padding: 24px; }
-    .modal-content { position: relative; background: #fff; padding: 20px; border-radius: var(--radius); width: 860px; max-height: 86vh; overflow-y: auto; box-shadow: var(--shadow); }
-    .modal-content h2 { margin-bottom: 15px; }
-    .close-icon { position: absolute; top: 10px; right: 14px; font-size: 20px; cursor: pointer; color: #333; }
-    .close-icon:hover { color: red; }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .field { display: flex; flex-direction: column; gap: 6px; }
+    .status-open { background: var(--success); }
+    .status-closed { background: var(--danger); }
+    .status-hold { background: var(--warning); color: #222; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; padding: 24px; z-index: 1000; }
+    .modal-content { position: relative; background: #fff; padding: 30px; border-radius: var(--radius); width: 860px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow); }
+    .modal-content h2 { margin-bottom: 20px; font-size: 24px; color: var(--primary); font-weight: 700; }
+    .close-icon { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #666; transition: color 0.2s; }
+    .close-icon:hover { color: #dc3545; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .field { display: flex; flex-direction: column; gap: 8px; }
     .full-row { grid-column: 1 / -1; }
-    label { font-size: 14px; color: #222; }
-    input, textarea, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: var(--radius); font: inherit; }
-    textarea { resize: vertical; min-height: 84px; }
+    label { font-size: 14px; color: #555; font-weight: 500; }
+    input, textarea, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font: inherit; transition: border-color 0.2s; }
+    input:focus, textarea:focus, select:focus { border-color: var(--primary); outline: none; }
+    textarea { resize: vertical; min-height: 100px; }
     .two-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .checkbox-row { grid-column: 1 / -1; display: flex; align-items: center; justify-content: flex-start; margin-top: -4px; }
     .checkbox-label { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: #222; cursor: pointer; }
     .checkbox-label input { width: 18px; height: 18px; }
-    .modal-actions { margin-top: 16px; display: flex; gap: 10px; }
-    .view-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; }
-    .view-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-    .view-logo { width: 48px; height: 48px; border-radius: 50%; object-fit: contain; border: 1px solid #ddd; }
-    h3.full-row { grid-column: 1 / -1; margin: 10px 0 4px; font-size: 16px; color: var(--dark); border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+    .modal-actions { margin-top: 20px; display: flex; justify-content: flex-end; gap: 12px; }
+    .view-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .view-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+    .view-logo { width: 60px; height: 60px; border-radius: 50%; object-fit: contain; border: 1px solid #ddd; }
+    .view-header h2 { font-size: 28px; }
+    h3.full-row { grid-column: 1 / -1; margin: 15px 0 8px; font-size: 18px; color: var(--dark); border-bottom: 1px solid #ddd; padding-bottom: 4px; }
 
     /* Toast notifications */
     .toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
     .toast { padding: 12px 18px; border-radius: 6px; color: #fff; font-size: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); animation: fadeInOut 3s forwards; }
-    .toast.success { background: #28a745; }
-    .toast.info { background: #0d6efd; }
-    .toast.error { background: #dc3545; }
+    .toast.success { background: var(--success); }
+    .toast.info { background: var(--primary); }
+    .toast.error { background: var(--danger); }
     @keyframes fadeInOut { 0% { opacity: 0; transform: translateY(-10px);} 10%{opacity:1;transform:translateY(0);} 90%{opacity:1;} 100%{opacity:0;transform:translateY(-10px);} }
 
     /* Confirm Modal */
-    .confirm-modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:1500; }
-    .confirm-box { background:#fff; padding:20px; border-radius:8px; width:360px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.2); }
-    .confirm-box h3 { margin-bottom:12px; font-size:18px; color:#333; }
-    .confirm-actions { display:flex; justify-content:center; gap:12px; margin-top:16px; }
-    .confirm-actions button { padding:8px 14px; border:none; border-radius:6px; cursor:pointer; font-size:14px; }
-    .confirm-actions .yes { background:#dc3545; color:#fff; }
-    .confirm-actions .cancel { background:#ccc; color:#222; }
+    .confirm-modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:1500; }
+    .confirm-box { background:#fff; padding: 40px; border-radius: 12px; width:400px; text-align:center; box-shadow:0 8px 30px rgba(0,0,0,0.2); }
+    .confirm-box h3 { margin-bottom:12px; font-size:22px; color: #2c3e50; font-weight: 600; }
+    .confirm-box p { margin-bottom: 20px; color: #7f8c8d; font-size: 16px; }
+    .confirm-actions { display:flex; justify-content:center; gap:15px; margin-top:20px; }
+    .confirm-actions button { padding:12px 24px; border:none; border-radius:8px; cursor:pointer; font-size:15px; font-weight:600; transition: background-color 0.2s, transform 0.2s; }
+    .confirm-actions .yes { background: var(--danger); color:#fff; }
+    .confirm-actions .yes:hover { background: #c82333; transform: translateY(-2px); }
+    .confirm-actions .cancel { background:#E0E0E0; color:#555; }
+    .confirm-actions .cancel:hover { background: #d0d0d0; transform: translateY(-2px); }
+
     /* Logo preview */
-    .logo-preview { margin-top: 6px; width: 60px; height: 60px; border-radius: 50%; border: 1px solid #ddd; object-fit: contain; display: none; }
+    .logo-preview { margin-top: 8px; width: 80px; height: 80px; border-radius: 50%; border: 1px solid #ddd; object-fit: contain; display: none; }
   </style>
 </head>
 <body>
 
-  <!-- Sidebar -->
   <aside class="sidebar">
     <h2>QuickHire</h2>
     <ul class="nav">
@@ -107,7 +126,6 @@
     </ul>
   </aside>
 
-  <!-- Main -->
   <div class="main">
     <header class="header">
       <h1>Job Posts</h1>
@@ -118,15 +136,15 @@
       <table>
         <thead>
           <tr>
-            <th>Company</th>
-            <th>Job Title</th>
-            <th>Type</th>
-            <th>Package</th>
-            <th>Location</th>
-            <th>Status</th>
-            <th>Applicants</th>
-            <th>Post Date</th>
-            <th>Actions</th>
+            <th style="width: 15%;">Company</th>
+            <th style="width: 20%;">Job Title</th>
+            <th style="width: 10%;">Type</th>
+            <th style="width: 10%;">Package</th>
+            <th style="width: 15%;">Location</th>
+            <th style="width: 10%;">Status</th>
+            <th style="width: 5%;">Applicants</th>
+            <th style="width: 10%;">Post Date</th>
+            <th style="width: 10%;">Actions</th>
           </tr>
         </thead>
         <tbody id="jobTable"></tbody>
@@ -134,7 +152,6 @@
     </section>
   </div>
 
-  <!-- Modal Add/Edit Job -->
   <div class="modal" id="jobModal">
     <div class="modal-content">
       <span class="close-icon" onclick="closeModal()">&times;</span>
@@ -174,21 +191,19 @@
     </div>
   </div>
 
-  <!-- View Modal -->
   <div class="modal" id="viewModal">
     <div class="modal-content" id="viewContent"></div>
   </div>
 
-  <!-- Toasts -->
   <div class="toast-container" id="toastContainer"></div>
 
-  <!-- Custom Confirm -->
   <div class="confirm-modal" id="confirmModal">
     <div class="confirm-box">
       <h3>Are you sure you want to delete this job?</h3>
+      <p>This action cannot be undone and will permanently delete the job post.</p>
       <div class="confirm-actions">
-        <button class="yes" id="confirmYes">Yes, Delete</button>
         <button class="cancel" onclick="closeConfirm()">Cancel</button>
+        <button class="yes" id="confirmYes">Yes, Delete</button>
       </div>
     </div>
   </div>
@@ -260,20 +275,30 @@ async function loadJobs(){
   const tbody=document.getElementById("jobTable"); tbody.innerHTML="";
   jobs.forEach(job=>{
     const logoUrl=job.logo?`/uploads/${job.logo.split("/").pop()}`:"https://via.placeholder.com/40";
+    
+    // Manual date formatting for consistent DD/MM/YY output
+    const date = new Date(job.created_at);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = String(date.getFullYear()).slice(-2);
+    const formattedDate = `${day}/${month}/${year}`;
+    
     tbody.innerHTML+=`
     <tr>
-      <td><div class="company-cell"><img src="${logoUrl}" class="company-logo"><div class="company-name">${job.company}</div></div></td>
+      <td class="company-cell-wrapper"><div class="company-cell"><img src="${logoUrl}" class="company-logo"><div class="company-name">${job.company}</div></div></td>
       <td>${job.title}</td>
       <td>${job.job_type}</td>
       <td>${job.package_ctc}</td>
       <td>${job.location}</td>
       <td><span class="status status-${job.status.toLowerCase()}">${job.status}</span></td>
       <td>0</td>
-      <td>${new Date(job.created_at).toLocaleDateString("en-GB")}</td>
+      <td>${formattedDate}</td>
       <td class="actions">
-        <button class="btn-action view" onclick='viewJob(${JSON.stringify(job)})'><i class="fa fa-eye"></i></button>
-        <button class="btn-action edit" onclick='openModal(${JSON.stringify(job)})'><i class="fa fa-pen"></i></button>
-        <button class="btn-action delete" onclick="confirmDelete(${job.id})"><i class="fa fa-trash"></i></button>
+        <div class="action-group">
+          <button class="btn-action view" onclick='viewJob(${JSON.stringify(job)})'><i class="fa fa-eye"></i></button>
+          <button class="btn-action edit" onclick='openModal(${JSON.stringify(job)})'><i class="fa fa-pen"></i></button>
+          <button class="btn-action delete" onclick="confirmDelete(${job.id})"><i class="fa fa-trash"></i></button>
+        </div>
       </td>
     </tr>`;
   });
@@ -319,6 +344,14 @@ function viewJob(job){
   const modal=document.getElementById("viewModal");
   const content=document.getElementById("viewContent");
   const logoUrl=job.logo?`/uploads/${job.logo.split("/").pop()}`:"https://via.placeholder.com/40";
+  
+  // Manual date formatting for consistent DD/MM/YY output
+  const date = new Date(job.created_at);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = String(date.getFullYear()).slice(-2);
+  const formattedDate = `${day}/${month}/${year}`;
+
   content.innerHTML=`
     <span class="close-icon" onclick="closeView()">&times;</span>
     <div class="view-header"><img src="${logoUrl}" class="view-logo">
@@ -330,7 +363,7 @@ function viewJob(job){
       <p><b>Location:</b> ${job.location}</p>
       <p><b>Experience:</b> ${job.expMin} - ${job.expMax} yrs</p>
       <p><b>Willing to Relocate:</b> ${job.relocate}</p>
-      <p><b>Post Date:</b> ${new Date(job.created_at).toLocaleDateString("en-GB")}</p>
+      <p><b>Post Date:</b> ${formattedDate}</p>
       <p class="full" style="grid-column:1/-1;"><b>Description:</b><br>${job.description}</p>
       <h3 class="full-row">Eligible Criteria</h3>
       <p><b>10th %:</b> ${job.crit10}</p>

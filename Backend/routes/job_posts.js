@@ -88,7 +88,7 @@ router.get("/", (req, res) => {
 // ------------------ UPDATE JOB ------------------
 router.put("/:id", upload.single("logo"), (req, res) => {
   const { id } = req.params;
-  const recruiter_id = toInt(req.query.recruiter_id || req.body.recruiter_id);
+  const recruiter_id = toInt(req.query.recruiter_id);
 
   if (!recruiter_id) {
     return res.status(400).json({ success: false, message: "Recruiter ID required" });
@@ -106,7 +106,7 @@ router.put("/:id", upload.single("logo"), (req, res) => {
       const oldLogo = results[0].logo;
       let logoPath = oldLogo;
 
-      // ✅ If new logo uploaded → replace and delete old one
+      // If new logo uploaded → replace and delete old one
       if (req.file) {
         logoPath = `uploads/${req.file.filename}`;
         const oldPath = oldLogo ? path.join(__dirname, "../", oldLogo) : null;
@@ -130,11 +130,11 @@ router.put("/:id", upload.single("logo"), (req, res) => {
         req.body.description,
         req.body.skills,
         req.body.relocate,
-        req.body.crit10,
-        req.body.crit12,
-        req.body.critUg,
-        req.body.expMin,
-        req.body.expMax,
+        toInt(req.body.crit10),
+        toInt(req.body.crit12),
+        toInt(req.body.critUg),
+        toInt(req.body.expMin),
+        toInt(req.body.expMax),
         logoPath,
         id,
         recruiter_id,
@@ -152,7 +152,6 @@ router.put("/:id", upload.single("logo"), (req, res) => {
     }
   );
 });
-
 
 // ------------------ DELETE JOB ------------------
 router.delete("/:id", (req, res) => {
@@ -174,7 +173,7 @@ router.delete("/:id", (req, res) => {
         (err2) => {
           if (err2) return res.status(500).json({ success: false, message: err2.message });
 
-          // ✅ Delete logo file if exists
+          // Delete logo file if exists
           if (logoPath && fs.existsSync(logoPath)) {
             fs.unlinkSync(logoPath);
           }
