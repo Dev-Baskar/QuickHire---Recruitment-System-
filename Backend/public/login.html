@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>QuickHire Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #1a73e8; /* Vibrant Blue */
+            --dark-gray: #263238; /* Dark for text */
+            --light-gray: #f2f5f9; /* Light gray for right panel */
+            --card-bg: #ffffff; /* White for form background */
+            --text-color: #455A64;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --radius: 12px;
+            --brandDark: #0d6efd;
+            --ok: #2e7d32;
+            --bad: #c62828;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--light-gray);
+        }
+
+        /* Left Panel */
+        .left-panel {
+            flex: 1;
+            background-color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2.5em;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            padding: 20px;
+        }
+        
+        /* Right Panel */
+        .right-panel {
+            flex: 1;
+            background-color: var(--light-gray);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 20px;
+            position: relative;
+        }
+
+        /* Login Heading */
+        .login-heading {
+            font-size: 1.8em;
+            color: var(--dark-gray);
+            font-weight: 600;
+            margin-bottom: 25px;
+        }
+
+        /* Role Selection Cards */
+        .role-selection {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+            transition: all 0.5s ease-in-out;
+            position: absolute;
+        }
+        .role-selection-cards {
+            display: flex;
+            flex-direction: row;
+            gap: 25px;
+        }
+        .role-card {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            width: 200px;
+            height: 200px;
+            text-align: center;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .role-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0px 12px 25px rgba(0,0,0,0.2);
+        }
+        .role-card p {
+            margin: 0;
+            font-size: 14px;
+            color: var(--text-color);
+        }
+        .role-card h2 {
+            margin: 10px 0 0;
+            font-size: 26px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        .role-card i {
+            font-size: 2.5em;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        /* Login Form Container */
+        .login-form-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 350px;
+            transition: all 0.5s ease-in-out;
+            opacity: 0;
+            transform: scale(0.9);
+            position: relative;
+            padding: 20px;
+        }
+        .login-form-container.show {
+            opacity: 1;
+            transform: scale(1);
+            display: flex;
+        }
+        .login-form-container h2 {
+            font-size: 2em;
+            margin-bottom: 20px;
+            color: var(--dark-gray);
+        }
+        .form-field {
+            position: relative;
+            margin-bottom: 20px;
+            width: 100%;
+            text-align: left;
+        }
+        .form-field label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-color);
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        .form-field input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .form-field input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+            outline: none;
+        }
+        .login-button {
+            width: 100%;
+            padding: 12px;
+            background: var(--primary);
+            color: white;
+            font-size: 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+        .login-button:hover {
+            background: var(--brandDark);
+            transform: translateY(-2px);
+        }
+        .back-arrow {
+            position: absolute;
+            top: -25px; 
+            left: 0;
+            font-size: 16px;
+            color: var(--primary);
+            cursor: pointer;
+            border: none;
+            background: none;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .back-arrow:hover {
+            transform: translateX(-5px);
+        }
+        .note {
+            margin-top: 15px;
+            font-size: 13px;
+            text-align: center;
+            color: var(--text-color);
+        }
+        .note a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .note a:hover {
+            text-decoration: underline;
+        }
+        .popup {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 6px;
+            box-shadow: 0px 5px 15px rgba(0,0,0,0.2);
+            font-size: 16px;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.5s ease;
+            z-index: 9999;
+        }
+        .popup.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        #usernameMsg {
+            font-size: 12px;
+            margin-top: 4px;
+            text-align: left;
+            color: var(--bad);
+        }
+        #passwordMsg {
+            font-size: 12px;
+            margin-top: 4px;
+            text-align: left;
+            color: var(--bad);
+        }
+        .password-field {
+            position: relative;
+        }
+        .password-field input {
+            padding-right: 40px;
+        }
+        .password-field .show-password-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+        }
+        .password-field .show-password-icon:hover {
+            color: var(--primary);
+        }
+
+    </style>
+</head>
+<body>
+    
+    <!-- Left Panel -->
+    <div class="left-panel">
+        <div>QuickHire</div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="right-panel">
+        
+        <!-- Role Selection -->
+        <div class="role-selection" id="roleSelection">
+            <h2 class="login-heading">Choose Your Role</h2>
+            <div class="role-selection-cards">
+                <div class="role-card" onclick="selectRole('recruiter')">
+                    <i class="fas fa-briefcase"></i>
+                    <h2>Recruiter</h2>
+                    <p>Manage your company's job postings and applications.</p>
+                </div>
+                <div class="role-card" onclick="selectRole('jobseeker')">
+                    <i class="fas fa-user-tie"></i>
+                    <h2>Job Seeker</h2>
+                    <p>Find your next career opportunity.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Login Form -->
+        <div class="login-form-container" id="loginFormContainer">
+            <button class="back-arrow" onclick="goBack()"><i class="fas fa-arrow-left"></i> Back</button>
+            <h2 id="loginTitle">Login</h2>
+            
+            <div class="form-field">
+                <label for="username">Username</label>
+                <input type="text" id="username" placeholder="Enter your username">
+                <div id="usernameMsg"></div>
+            </div>
+            
+            <div class="form-field password-field">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Enter your password">
+                <i class="fas fa-eye-slash show-password-icon" onclick="togglePasswordVisibility('password')"></i>
+                <div id="passwordMsg"></div>
+            </div>
+
+            <button class="login-button" onclick="login()">Login</button>
+            <p class="note">Don’t have an account? <a href="register.html">Register here</a></p>
+        </div>
+    </div>
+
+    <div id="popup" class="popup">Login successful!</div>
+
+    <script>
+        const API_BASE = "http://localhost:5000/api/auth";
+        let selectedRole = null;
+        let roleSelection = document.getElementById("roleSelection");
+        let loginFormContainer = document.getElementById("loginFormContainer");
+        let debounceTimeout = null;
+
+        function selectRole(role) {
+            selectedRole = role;
+            roleSelection.style.display = "none";
+            loginFormContainer.classList.add("show");
+            document.getElementById("loginTitle").innerText =
+                role === "recruiter" ? "Recruiter Login" : "Job Seeker Login";
+        }
+
+        function goBack() {
+            selectedRole = null;
+            loginFormContainer.classList.remove("show");
+            setTimeout(() => {
+                roleSelection.style.display = "flex";
+            }, 500);
+            
+            // Clear inputs and messages
+            document.getElementById("username").value = '';
+            document.getElementById("password").value = '';
+            document.getElementById("usernameMsg").textContent = '';
+            document.getElementById("passwordMsg").textContent = '';
+        }
+
+        function showPopup(message) {
+            const popup = document.getElementById("popup");
+            popup.innerText = message;
+            popup.classList.add("show");
+            setTimeout(() => {
+                popup.classList.remove("show");
+            }, 3000);
+        }
+
+        function togglePasswordVisibility(id) {
+            const input = document.getElementById(id);
+            const icon = input.nextElementSibling;
+            if (input.type === "password") {
+                input.type = "text";
+                icon.classList.remove("fa-eye-slash");
+                icon.classList.add("fa-eye");
+            } else {
+                input.type = "password";
+                icon.classList.remove("fa-eye");
+                icon.classList.add("fa-eye-slash");
+            }
+        }
+
+        document.getElementById("username").addEventListener('input', (e) => {
+            const username = e.target.value.trim();
+            const msgEl = document.getElementById("usernameMsg");
+            
+            clearTimeout(debounceTimeout);
+            
+            if (!username) {
+                msgEl.textContent = '';
+                return;
+            }
+
+            debounceTimeout = setTimeout(async () => {
+                const res = await fetch(`${API_BASE}/check-username/${username}`);
+                const data = await res.json();
+                
+                if (data.available) {
+                    msgEl.textContent = 'Username does not exist';
+                    msgEl.style.color = 'red';  
+                } else {
+                    msgEl.textContent = 'Username exists';
+                    msgEl.style.color = 'green';
+                }
+            }, 500); // 500ms debounce
+        });
+
+        async function login() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+            const msgEl = document.getElementById("passwordMsg");
+
+            if (!selectedRole) {
+                alert("Please choose Recruiter or Job Seeker first.");
+                return;
+            }
+
+            const res = await fetch("http://localhost:5000/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                if (data.role !== selectedRole) {
+                    alert("Wrong role selected. Please choose correctly.");
+                    return;
+                }
+
+                localStorage.setItem("token", data.token);
+                localStorage.setItem("role", data.role);
+                localStorage.setItem("userId", data.id);
+
+                showPopup("✅ Login successful!");
+                setTimeout(() => {
+                    if (selectedRole === "recruiter") {
+                        window.location.href = "recruiter-dashboard.html";
+                    } else {
+                        window.location.href = "index.html";
+                    }
+                }, 1500);
+            } else {
+                msgEl.textContent = 'Invalid login. Check password.';
+                msgEl.style.color = 'red';
+            }
+        }
+    </script>
+</body>
+</html>

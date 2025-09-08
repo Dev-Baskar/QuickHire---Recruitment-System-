@@ -17,7 +17,9 @@ function validateEmail(email) {
 }
 
 function passwordMatches() {
-  return $("password").value === $("confirmPassword").value;
+  const password = $("password").value;
+  const confirmPassword = $("confirmPassword").value;
+  return password.length > 0 && password === confirmPassword;
 }
 
 function setRegisterEnabled(enabled) {
@@ -216,14 +218,48 @@ async function register() {
   }
 }
 
-["password","confirmPassword"].forEach(id=>{
-  document.addEventListener("DOMContentLoaded", ()=>{
-    $(id).addEventListener("input", ()=>{
-      if (emailVerified && passwordMatches()) setRegisterEnabled(true);
-      else setRegisterEnabled(false);
-    });
-  });
-});
+// ✅ Add event listeners for real-time password matching
+function checkPasswordMatch() {
+    const password = $("password").value;
+    const confirmPassword = $("confirmPassword").value;
+    const msgEl = $("passwordMatchMsg");
+
+    if (password === "" && confirmPassword === "") {
+        msgEl.textContent = "";
+    } else if (password !== confirmPassword) {
+        msgEl.textContent = "❌ Passwords do not match";
+        msgEl.style.color = "red";
+    } else {
+        msgEl.textContent = "✅ Passwords match";
+        msgEl.style.color = "green";
+    }
+
+    if (emailVerified && password.length > 0 && password === confirmPassword) {
+        setRegisterEnabled(true);
+    } else {
+        setRegisterEnabled(false);
+    }
+}
+
+$("password").addEventListener("input", checkPasswordMatch);
+$("confirmPassword").addEventListener("input", checkPasswordMatch);
+
+// ✅ Add function to toggle password visibility
+function togglePasswordVisibility(id) {
+    const input = document.getElementById(id);
+    const icon = input.nextElementSibling;
+
+    if (input.type === "password") {
+        input.type = "text";
+        icon.classList.remove("fa-eye-slash");
+        icon.classList.add("fa-eye");
+    } else {
+        input.type = "password";
+        icon.classList.remove("fa-eye");
+        icon.classList.add("fa-eye-slash");
+    }
+}
 
 window.sendEmailOTP = sendEmailOTP;
 window.register = register;
+window.togglePasswordVisibility = togglePasswordVisibility;
