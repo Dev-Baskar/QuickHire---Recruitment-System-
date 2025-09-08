@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recruiter - Job Posts | QuickHire</title>
+
+  <!-- Font Awesome for action icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --primary: #0d6efd;
+      --dark: #1f2a36;
+      --light: #f8f9fa;
+      --card-bg: #fff;
+      --text: #333;
+      --radius: 8px;
+      --shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Segoe UI", Roboto, sans-serif; display: flex; height: 100vh; background: var(--light); }
+    .sidebar { width: 240px; background: var(--dark); color: #fff; display: flex; flex-direction: column; padding: 20px 0; }
+    .sidebar h2 { text-align: center; margin-bottom: 20px; font-size: 20px; color: var(--primary); }
+    .nav { list-style: none; flex-grow: 1; }
+    .nav li { padding: 14px 24px; cursor: pointer; transition: 0.2s; }
+    .nav li:hover, .nav li.active { background: var(--primary); }
+    .main { flex-grow: 1; display: flex; flex-direction: column; }
+    .header { height: 60px; background: #fff; box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center; padding: 0 20px; }
+    .header h1 { font-size: 20px; color: var(--text); }
+    .content { padding: 20px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; background: var(--card-bg); box-shadow: var(--shadow); border-radius: var(--radius); overflow: hidden; }
+    th, td { padding: 12px 15px; text-align: center; border-bottom: 1px solid #eee; vertical-align: middle; }
+    th { background: var(--primary); color: #fff; }
+    tr:hover { background: #f1f5ff; }
+    .company-cell { display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .company-logo { width: 40px; height: 40px; border-radius: 50%; object-fit: contain; border: 1px solid #ddd; }
+    .company-name { font-size: 12px; font-weight: 600; color: #222; }
+    .btn { background: var(--primary); color: #fff; border: none; padding: 8px; border-radius: var(--radius); cursor: pointer; transition: 0.2s; font-size: 14px; }
+    .btn:hover { background: #0a58ca; }
+    .btn-action { border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 14px; color: #fff; }
+    .btn-action.view { background: #17a2b8; }
+    .btn-action.edit { background: #ffc107; color: #222; }
+    .btn-action.delete { background: #dc3545; }
+    .btn-action:hover { opacity: 0.85; }
+    .status { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; color: #fff; }
+    .status-open { background: #28a745; }
+    .status-closed { background: #dc3545; }
+    .status-hold { background: #ffc107; color: #222; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; padding: 24px; }
+    .modal-content { position: relative; background: #fff; padding: 20px; border-radius: var(--radius); width: 860px; max-height: 86vh; overflow-y: auto; box-shadow: var(--shadow); }
+    .modal-content h2 { margin-bottom: 15px; }
+    .close-icon { position: absolute; top: 10px; right: 14px; font-size: 20px; cursor: pointer; color: #333; }
+    .close-icon:hover { color: red; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .full-row { grid-column: 1 / -1; }
+    label { font-size: 14px; color: #222; }
+    input, textarea, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: var(--radius); font: inherit; }
+    textarea { resize: vertical; min-height: 84px; }
+    .two-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .checkbox-row { grid-column: 1 / -1; display: flex; align-items: center; justify-content: flex-start; margin-top: -4px; }
+    .checkbox-label { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: #222; cursor: pointer; }
+    .checkbox-label input { width: 18px; height: 18px; }
+    .modal-actions { margin-top: 16px; display: flex; gap: 10px; }
+    .view-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; }
+    .view-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .view-logo { width: 48px; height: 48px; border-radius: 50%; object-fit: contain; border: 1px solid #ddd; }
+    h3.full-row { grid-column: 1 / -1; margin: 10px 0 4px; font-size: 16px; color: var(--dark); border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+
+    /* Toast notifications */
+    .toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
+    .toast { padding: 12px 18px; border-radius: 6px; color: #fff; font-size: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); animation: fadeInOut 3s forwards; }
+    .toast.success { background: #28a745; }
+    .toast.info { background: #0d6efd; }
+    .toast.error { background: #dc3545; }
+    @keyframes fadeInOut { 0% { opacity: 0; transform: translateY(-10px);} 10%{opacity:1;transform:translateY(0);} 90%{opacity:1;} 100%{opacity:0;transform:translateY(-10px);} }
+
+    /* Confirm Modal */
+    .confirm-modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:1500; }
+    .confirm-box { background:#fff; padding:20px; border-radius:8px; width:360px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.2); }
+    .confirm-box h3 { margin-bottom:12px; font-size:18px; color:#333; }
+    .confirm-actions { display:flex; justify-content:center; gap:12px; margin-top:16px; }
+    .confirm-actions button { padding:8px 14px; border:none; border-radius:6px; cursor:pointer; font-size:14px; }
+    .confirm-actions .yes { background:#dc3545; color:#fff; }
+    .confirm-actions .cancel { background:#ccc; color:#222; }
+    /* Logo preview */
+    .logo-preview { margin-top: 6px; width: 60px; height: 60px; border-radius: 50%; border: 1px solid #ddd; object-fit: contain; display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <h2>QuickHire</h2>
+    <ul class="nav">
+      <li onclick="location.href='recruiter-dashboard.html'">Dashboard</li>
+      <li class="active">Job Posts</li>
+      <li onclick="location.href='recruiter-applications.html'">Applications</li>
+      <li>Meetings</li>
+      <li>SAS Process</li>
+      <li>Invite History</li>
+      <li>Company List</li>
+      <li>Company Verification</li>
+      <li>Admin</li>
+      <li>Account</li>
+    </ul>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="header">
+      <h1>Job Posts</h1>
+      <button class="btn" onclick="openModal()">+ Add Job Post</button>
+    </header>
+
+    <section class="content">
+      <table>
+        <thead>
+          <tr>
+            <th>Company</th>
+            <th>Job Title</th>
+            <th>Type</th>
+            <th>Package</th>
+            <th>Location</th>
+            <th>Status</th>
+            <th>Applicants</th>
+            <th>Post Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="jobTable"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <!-- Modal Add/Edit Job -->
+  <div class="modal" id="jobModal">
+    <div class="modal-content">
+      <span class="close-icon" onclick="closeModal()">&times;</span>
+      <h2 id="modalTitle">Add Job Post</h2>
+      <div class="form-grid">
+        <div class="field">
+          <label>Company Logo</label>
+          <input type="file" id="jobLogo" accept="image/*" onchange="previewLogo(event)" />
+          <img id="logoPreview" class="logo-preview" />
+        </div>
+        <div class="field"><label>Company Name</label><input type="text" id="companyName" /></div>
+        <div class="field"><label>Job Title</label><input type="text" id="jobTitle" /></div>
+        <div class="field"><label>Location</label><input type="text" id="jobLocation" /></div>
+        <div class="field"><label>Job Type</label>
+          <select id="jobType">
+            <option>Full-Time</option><option>Part-Time</option><option>Internship</option><option>Hybrid</option><option>Remote</option><option>Work From Home</option>
+          </select>
+        </div>
+        <div class="field"><label>Package (CTC)</label><input type="text" id="package" placeholder="e.g., 5-7 LPA" /></div>
+        <div class="field"><label>Status</label>
+          <select id="status"><option>Open</option><option>Closed</option><option>Hold</option></select>
+        </div>
+        <div class="field"><label>Experience (Years)</label>
+          <div class="two-inputs"><input type="number" id="expMin" placeholder="Min" /><input type="number" id="expMax" placeholder="Max" /></div>
+        </div>
+        <div class="field full-row"><label>Job Description</label><textarea id="jobDesc"></textarea></div>
+        <h3 class="full-row">Eligible Criteria</h3>
+        <div class="field"><label>10th %</label><input type="number" id="crit10" /></div>
+        <div class="field"><label>12th %</label><input type="number" id="crit12" /></div>
+        <div class="field"><label>Diploma/UG %</label><input type="number" id="critUg" /></div>
+        <div class="field full-row"><label>Required Skills</label><textarea id="skills"></textarea></div>
+        <div class="checkbox-row"><label class="checkbox-label"><input type="checkbox" id="relocate" />Willing to Relocate Required</label></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="saveJob()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Modal -->
+  <div class="modal" id="viewModal">
+    <div class="modal-content" id="viewContent"></div>
+  </div>
+
+  <!-- Toasts -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Custom Confirm -->
+  <div class="confirm-modal" id="confirmModal">
+    <div class="confirm-box">
+      <h3>Are you sure you want to delete this job?</h3>
+      <div class="confirm-actions">
+        <button class="yes" id="confirmYes">Yes, Delete</button>
+        <button class="cancel" onclick="closeConfirm()">Cancel</button>
+      </div>
+    </div>
+  </div>
+<script>
+const API_BASE = "http://localhost:5000/api/job_posts";
+const recruiter_id = 1;
+let editingJobId = null;
+let deleteJobId = null;
+
+// Toast
+function showToast(message, type="info"){
+  const container=document.getElementById("toastContainer");
+  const toast=document.createElement("div");
+  toast.className=`toast ${type}`;
+  toast.textContent=message;
+  container.appendChild(toast);
+  setTimeout(()=>toast.remove(),3000);
+}
+
+function previewLogo(e){
+  const file=e.target.files[0];
+  const preview=document.getElementById("logoPreview");
+  if(file){ preview.src=URL.createObjectURL(file); preview.style.display="block"; }
+}
+
+function openModal(job=null) {
+  document.getElementById("jobModal").style.display="flex";
+  document.getElementById("modalTitle").innerText= job ? "Edit Job Post" : "Add Job Post";
+  editingJobId= job ? job.id : null;
+
+  document.getElementById("companyName").value=job?.company||"";
+  document.getElementById("jobTitle").value=job?.title||"";
+  document.getElementById("jobLocation").value=job?.location||"";
+  document.getElementById("jobType").value=job?.job_type||"Full-Time";
+  document.getElementById("package").value=job?.package_ctc||"";
+  document.getElementById("status").value=job?.status||"Open";
+  document.getElementById("jobDesc").value=job?.description||"";
+  document.getElementById("skills").value=job?.skills||"";
+  document.getElementById("relocate").checked=job?.relocate==="Yes";
+  document.getElementById("crit10").value=job?.crit10||"";
+  document.getElementById("crit12").value=job?.crit12||"";
+  document.getElementById("critUg").value=job?.critUg||"";
+  document.getElementById("expMin").value=job?.expMin||"";
+  document.getElementById("expMax").value=job?.expMax||"";
+
+  const preview=document.getElementById("logoPreview");
+  if(job?.logo){
+    preview.src=`/uploads/${job.logo.split("/").pop()}`;
+    preview.style.display="block";
+  }else{
+    preview.style.display="none";
+  }
+}
+
+function closeModal(){
+  document.getElementById("jobModal").style.display="none";
+  document.getElementById("jobLogo").value="";
+  document.getElementById("logoPreview").style.display="none";
+  editingJobId = null; // reset after save/close
+}
+
+function closeView(){document.getElementById("viewModal").style.display="none";}
+function closeConfirm(){document.getElementById("confirmModal").style.display="none"; deleteJobId=null;}
+
+async function loadJobs(){
+  const res=await fetch(`${API_BASE}?recruiter_id=${recruiter_id}`);
+  const data=await res.json(); if(!data) return;
+  const jobs=data.jobs||data;
+  const tbody=document.getElementById("jobTable"); tbody.innerHTML="";
+  jobs.forEach(job=>{
+    const logoUrl=job.logo?`/uploads/${job.logo.split("/").pop()}`:"https://via.placeholder.com/40";
+    tbody.innerHTML+=`
+    <tr>
+      <td><div class="company-cell"><img src="${logoUrl}" class="company-logo"><div class="company-name">${job.company}</div></div></td>
+      <td>${job.title}</td>
+      <td>${job.job_type}</td>
+      <td>${job.package_ctc}</td>
+      <td>${job.location}</td>
+      <td><span class="status status-${job.status.toLowerCase()}">${job.status}</span></td>
+      <td>0</td>
+      <td>${new Date(job.created_at).toLocaleDateString("en-GB")}</td>
+      <td class="actions">
+        <button class="btn-action view" onclick='viewJob(${JSON.stringify(job)})'><i class="fa fa-eye"></i></button>
+        <button class="btn-action edit" onclick='openModal(${JSON.stringify(job)})'><i class="fa fa-pen"></i></button>
+        <button class="btn-action delete" onclick="confirmDelete(${job.id})"><i class="fa fa-trash"></i></button>
+      </td>
+    </tr>`;
+  });
+}
+
+async function saveJob(){
+  const formData=new FormData();
+  formData.append("recruiter_id",recruiter_id);
+  formData.append("company",document.getElementById("companyName").value);
+  formData.append("title",document.getElementById("jobTitle").value);
+  formData.append("location",document.getElementById("jobLocation").value);
+  formData.append("job_type",document.getElementById("jobType").value);
+  formData.append("package_ctc",document.getElementById("package").value);
+  formData.append("status",document.getElementById("status").value);
+  formData.append("description",document.getElementById("jobDesc").value);
+  formData.append("skills",document.getElementById("skills").value);
+  formData.append("relocate",document.getElementById("relocate").checked?"Yes":"No");
+  formData.append("crit10",document.getElementById("crit10").value);
+  formData.append("crit12",document.getElementById("crit12").value);
+  formData.append("critUg",document.getElementById("critUg").value);
+  formData.append("expMin",document.getElementById("expMin").value);
+  formData.append("expMax",document.getElementById("expMax").value);
+
+  const logoFile=document.getElementById("jobLogo").files[0];
+  if(logoFile) formData.append("logo",logoFile);
+  
+  const method=editingJobId?"PUT":"POST";
+  const url=editingJobId?`${API_BASE}/${editingJobId}?recruiter_id=${recruiter_id}`:API_BASE;
+
+  const res = await fetch(url,{method,body:formData});
+  const data = await res.json();
+
+  if(data.success){
+    closeModal();
+    loadJobs();
+    showToast(editingJobId ? "Job Updated Successfully" : "Job Posted Successfully","success");
+  }else{
+    showToast(data.message || "Error","error");
+  }
+}
+
+function viewJob(job){
+  const modal=document.getElementById("viewModal");
+  const content=document.getElementById("viewContent");
+  const logoUrl=job.logo?`/uploads/${job.logo.split("/").pop()}`:"https://via.placeholder.com/40";
+  content.innerHTML=`
+    <span class="close-icon" onclick="closeView()">&times;</span>
+    <div class="view-header"><img src="${logoUrl}" class="view-logo">
+    <div><div style="font-weight:700;">${job.company}</div><h2>${job.title}</h2></div></div>
+    <div class="view-grid">
+      <p><b>Type:</b> ${job.job_type}</p>
+      <p><b>Status:</b> <span class="status status-${job.status.toLowerCase()}">${job.status}</span></p>
+      <p><b>Package:</b> ${job.package_ctc}</p>
+      <p><b>Location:</b> ${job.location}</p>
+      <p><b>Experience:</b> ${job.expMin} - ${job.expMax} yrs</p>
+      <p><b>Willing to Relocate:</b> ${job.relocate}</p>
+      <p><b>Post Date:</b> ${new Date(job.created_at).toLocaleDateString("en-GB")}</p>
+      <p class="full" style="grid-column:1/-1;"><b>Description:</b><br>${job.description}</p>
+      <h3 class="full-row">Eligible Criteria</h3>
+      <p><b>10th %:</b> ${job.crit10}</p>
+      <p><b>12th %:</b> ${job.crit12}</p>
+      <p><b>Diploma/UG %:</b> ${job.critUg}</p>
+      <p class="full" style="grid-column:1/-1;"><b>Skills:</b><br>${job.skills}</p>
+    </div>`;
+  modal.style.display="flex";
+}
+
+function confirmDelete(id){ deleteJobId=id; document.getElementById("confirmModal").style.display="flex"; }
+document.getElementById("confirmYes").addEventListener("click",async()=>{
+  if(deleteJobId){
+    await fetch(`${API_BASE}/${deleteJobId}?recruiter_id=${recruiter_id}`,{method:"DELETE"});
+    loadJobs(); showToast("Job Deleted Successfully","error");
+  }
+  closeConfirm();
+});
+
+loadJobs();
+</script>
+
+</body>
+</html>
