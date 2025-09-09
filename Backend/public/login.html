@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>QuickHire Login</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -114,25 +113,26 @@
             margin-bottom: 10px;
         }
 
-        /* Login Form Container */
-        .login-form-container {
-            display: none;
-            flex-direction: column;
-            align-items: center;
+        /* Form containers */
+        .form-container {
             width: 100%;
             max-width: 350px;
-            transition: all 0.5s ease-in-out;
+            padding: 20px;
+            position: relative;
+            display: none;
             opacity: 0;
             transform: scale(0.9);
-            position: relative;
-            padding: 20px;
+            transition: all 0.5s ease-in-out;
         }
-        .login-form-container.show {
+        .form-container.show {
             opacity: 1;
             transform: scale(1);
             display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        .login-form-container h2 {
+
+        .form-container h2 {
             font-size: 2em;
             margin-bottom: 20px;
             color: var(--dark-gray);
@@ -164,6 +164,31 @@
             box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
             outline: none;
         }
+        .form-field .field-msg {
+            font-size: 11px;
+            margin-top: 4px;
+            text-align: left;
+        }
+        .form-field .field-msg.ok { color: var(--ok); }
+        .form-field .field-msg.bad { color: var(--bad); }
+        
+        /* --- NEW CSS ADDED HERE --- */
+        .forgot-password-link {
+            width: 100%;
+            text-align: start; /* Aligns text to the left */
+            margin-top: -10px;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+        .forgot-password-link a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .forgot-password-link a:hover {
+            text-decoration: underline;
+        }
+        /* ------------------------- */
+
         .login-button {
             width: 100%;
             padding: 12px;
@@ -179,9 +204,15 @@
             background: var(--brandDark);
             transform: translateY(-2px);
         }
+        .login-button:disabled {
+            background: #9fbfe9;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
         .back-arrow {
             position: absolute;
-            top: -25px; 
+            top: 0;
             left: 0;
             font-size: 16px;
             color: var(--primary);
@@ -196,6 +227,7 @@
         .back-arrow:hover {
             transform: translateX(-5px);
         }
+
         .note {
             margin-top: 15px;
             font-size: 13px;
@@ -213,7 +245,7 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            background: #28a745;
+            background: var(--ok);
             color: white;
             padding: 15px 20px;
             border-radius: 6px;
@@ -228,19 +260,10 @@
             opacity: 1;
             transform: translateY(0);
         }
+        .popup.bad {
+             background: var(--bad);
+        }
         
-        #usernameMsg {
-            font-size: 12px;
-            margin-top: 4px;
-            text-align: left;
-            color: var(--bad);
-        }
-        #passwordMsg {
-            font-size: 12px;
-            margin-top: 4px;
-            text-align: left;
-            color: var(--bad);
-        }
         .password-field {
             position: relative;
         }
@@ -250,7 +273,7 @@
         .password-field .show-password-icon {
             position: absolute;
             right: 15px;
-            top: 50%;
+            top: 65%;
             transform: translateY(-50%);
             color: #999;
             cursor: pointer;
@@ -260,20 +283,58 @@
         .password-field .show-password-icon:hover {
             color: var(--primary);
         }
+        
+        .otp-inputs {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            justify-content: center;
+        }
+        .otp-inputs input {
+            text-align: center;
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
+            padding: 0;
+        }
+        .otp-hint {
+            font-size: 12px;
+            color: var(--text-color);
+            margin-top: 6px;
+            text-align: center;
+        }
 
+        #forgotPasswordContainer .login-button {
+            margin-top: 20px;
+        }
+        .resend-link {
+            color: var(--primary);
+            border: none;
+            padding: 6px;
+            font-size: 12px;      
+            cursor: pointer;
+            text-align: center;
+        }
+        .resend-link:hover:disabled {
+            cursor: not-allowed;
+            text-decoration: none;
+        }
+        .resend-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
     </style>
 </head>
 <body>
     
-    <!-- Left Panel -->
     <div class="left-panel">
         <div>QuickHire</div>
     </div>
 
-    <!-- Right Panel -->
     <div class="right-panel">
         
-        <!-- Role Selection -->
         <div class="role-selection" id="roleSelection">
             <h2 class="login-heading">Choose Your Role</h2>
             <div class="role-selection-cards">
@@ -290,26 +351,72 @@
             </div>
         </div>
 
-        <!-- Login Form -->
-        <div class="login-form-container" id="loginFormContainer">
+        <div class="form-container" id="loginFormContainer">
             <button class="back-arrow" onclick="goBack()"><i class="fas fa-arrow-left"></i> Back</button>
             <h2 id="loginTitle">Login</h2>
             
             <div class="form-field">
                 <label for="username">Username</label>
                 <input type="text" id="username" placeholder="Enter your username">
-                <div id="usernameMsg"></div>
             </div>
             
             <div class="form-field password-field">
                 <label for="password">Password</label>
                 <input type="password" id="password" placeholder="Enter your password">
                 <i class="fas fa-eye-slash show-password-icon" onclick="togglePasswordVisibility('password')"></i>
-                <div id="passwordMsg"></div>
             </div>
 
+            <div class="forgot-password-link">
+                <a href="#" onclick="openForgotPasswordForm()">Forgot password?</a>
+            </div>
             <button class="login-button" onclick="login()">Login</button>
             <p class="note">Don’t have an account? <a href="register.html">Register here</a></p>
+        </div>
+
+        <div class="form-container" id="forgotPasswordContainer">
+            <button class="back-arrow" onclick="goBackFromForgot()"><i class="fas fa-arrow-left"></i> Back</button>
+            <h2 id="forgotPasswordTitle">Reset Password</h2>
+            
+            <div id="forgotStep1">
+                <div class="form-field">
+                    <label for="forgotUsername">Username</label>
+                    <input type="text" id="forgotUsername" placeholder="Enter your username">
+                    <div id="usernameForgotMsg" class="field-msg"></div>
+                </div>
+                <button class="login-button" id="sendOtpBtn" onclick="sendOtp()" disabled>Send OTP</button>
+            </div>
+            
+            <div id="forgotStep2" style="display: none;">
+                <p class="otp-hint" style="margin-bottom: 15px;">An OTP has been sent to your email.</p>
+                <div class="form-field">
+                    <label for="otpInput">Enter OTP</label>
+                    <div class="otp-inputs" id="otpInputs">
+                        <input type="text" id="otp-input-1" inputmode="numeric" maxlength="1" />
+                        <input type="text" id="otp-input-2" inputmode="numeric" maxlength="1" />
+                        <input type="text" id="otp-input-3" inputmode="numeric" maxlength="1" />
+                        <input type="text" id="otp-input-4" inputmode="numeric" maxlength="1" />
+                    </div>
+                </div>
+                <div class="resend-container">
+                    <button class="resend-link" id="resendOtpBtn" onclick="sendOtp()" disabled>Resend OTP (60s)</button>
+                    <button class="login-button" id="verifyOtpBtn" onclick="verifyOtp()">Verify OTP</button>
+                </div>
+            </div>
+            
+            <div id="forgotStep3" style="display: none;">
+                 <div class="form-field password-field">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" placeholder="Enter new password">
+                    <i class="fas fa-eye-slash show-password-icon" onclick="togglePasswordVisibility('newPassword')"></i>
+                </div>
+                <div class="form-field password-field">
+                    <label for="confirmNewPassword">Confirm Password</label>
+                    <input type="password" id="confirmNewPassword" placeholder="Confirm new password">
+                    <i class="fas fa-eye-slash show-password-icon" onclick="togglePasswordVisibility('confirmNewPassword')"></i>
+                </div>
+                <div id="newPasswordMatchMsg" class="field-msg" style="margin-top: -15px;"></div>
+                <button class="login-button" id="resetPasswordBtn" onclick="resetPassword()" disabled>Reset Password</button>
+            </div>
         </div>
     </div>
 
@@ -320,7 +427,10 @@
         let selectedRole = null;
         let roleSelection = document.getElementById("roleSelection");
         let loginFormContainer = document.getElementById("loginFormContainer");
+        let forgotPasswordContainer = document.getElementById("forgotPasswordContainer");
         let debounceTimeout = null;
+        
+        let forgotPasswordUsername = '';
 
         function selectRole(role) {
             selectedRole = role;
@@ -340,14 +450,26 @@
             // Clear inputs and messages
             document.getElementById("username").value = '';
             document.getElementById("password").value = '';
-            document.getElementById("usernameMsg").textContent = '';
-            document.getElementById("passwordMsg").textContent = '';
         }
 
-        function showPopup(message) {
+        function goBackFromForgot() {
+            forgotPasswordContainer.classList.remove("show");
+            setTimeout(() => {
+                loginFormContainer.classList.add("show");
+            }, 500);
+            
+            // Reset forgot password form
+            document.getElementById('forgotStep1').style.display = 'block';
+            document.getElementById('forgotStep2').style.display = 'none';
+            document.getElementById('forgotStep3').style.display = 'none';
+            document.getElementById("forgotUsername").value = '';
+            document.getElementById("usernameForgotMsg").textContent = '';
+        }
+
+        function showPopup(message, type = "ok") {
             const popup = document.getElementById("popup");
             popup.innerText = message;
-            popup.classList.add("show");
+            popup.className = `popup show ${type}`;
             setTimeout(() => {
                 popup.classList.remove("show");
             }, 3000);
@@ -366,39 +488,173 @@
                 icon.classList.add("fa-eye-slash");
             }
         }
+        
+        function openForgotPasswordForm() {
+            loginFormContainer.classList.remove("show");
+            setTimeout(() => {
+                forgotPasswordContainer.classList.add("show");
+            }, 500);
+        }
 
-        document.getElementById("username").addEventListener('input', (e) => {
+        // Forgot password form logic
+        document.getElementById("forgotUsername").addEventListener('input', (e) => {
             const username = e.target.value.trim();
-            const msgEl = document.getElementById("usernameMsg");
+            const msgEl = document.getElementById("usernameForgotMsg");
+            const sendBtn = document.getElementById("sendOtpBtn");
             
             clearTimeout(debounceTimeout);
             
             if (!username) {
                 msgEl.textContent = '';
+                sendBtn.disabled = true;
                 return;
             }
 
             debounceTimeout = setTimeout(async () => {
-                const res = await fetch(`${API_BASE}/check-username/${username}`);
+                const res = await fetch(`${API_BASE}/check-username-for-reset/${username}`);
                 const data = await res.json();
                 
-                if (data.available) {
-                    msgEl.textContent = 'Username does not exist';
-                    msgEl.style.color = 'red';  
+                if (data.exists) {
+                    msgEl.textContent = '✅ Username exists';
+                    msgEl.classList.remove('bad');
+                    msgEl.classList.add('ok');
+                    sendBtn.disabled = false;
                 } else {
-                    msgEl.textContent = 'Username exists';
-                    msgEl.style.color = 'green';
+                    msgEl.textContent = '❌ Username does not exist';
+                    msgEl.classList.remove('ok');
+                    msgEl.classList.add('bad');
+                    sendBtn.disabled = true;
                 }
-            }, 500); // 500ms debounce
+            }, 500);
         });
+
+        // OTP input functionality
+        const otpInputs = document.querySelectorAll('#forgotStep2 .otp-inputs input');
+        otpInputs.forEach((input, index) => {
+            input.addEventListener('input', () => {
+                if (input.value.length === 1 && index < otpInputs.length - 1) {
+                    otpInputs[index + 1].focus();
+                }
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && input.value.length === 0 && index > 0) {
+                    otpInputs[index - 1].focus();
+                }
+            });
+        });
+
+        function startResendCooldown(seconds) {
+            const resendBtn = document.getElementById('resendOtpBtn');
+            resendBtn.disabled = true;
+            let timer = seconds;
+            resendBtn.textContent = `Resend OTP (${timer}s)`;
+
+            const interval = setInterval(() => {
+                timer--;
+                resendBtn.textContent = `Resend OTP (${timer}s)`;
+                if (timer <= 0) {
+                    clearInterval(interval);
+                    resendBtn.textContent = 'Resend OTP';
+                    resendBtn.disabled = false;
+                }
+            }, 1000);
+        }
+
+        async function sendOtp() {
+            const username = document.getElementById("forgotUsername").value;
+            forgotPasswordUsername = username;
+            const res = await fetch(`${API_BASE}/forgot-password-otp`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                showPopup("✅ OTP sent to your email.", "ok");
+                document.getElementById('forgotStep1').style.display = 'none';
+                document.getElementById('forgotStep2').style.display = 'block';
+                startResendCooldown(60);
+            } else {
+                showPopup(data.error || '❌ An error occurred. Please try again.', "bad");
+            }
+        }
+        
+        async function verifyOtp() {
+            const otpInputs = document.querySelectorAll('#forgotStep2 .otp-inputs input');
+            const otp = Array.from(otpInputs).map(input => input.value).join('');
+            const username = document.getElementById('forgotUsername').value;
+
+            const res = await fetch(`${API_BASE}/verify-otp-for-reset`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, otp })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                showPopup('✅ OTP Verified. You can now reset your password.', 'ok');
+                document.getElementById('forgotStep2').style.display = 'none';
+                document.getElementById('forgotStep3').style.display = 'block';
+            } else {
+                showPopup(data.error || '❌ Invalid OTP. Please try again.', 'bad');
+            }
+        }
+        
+        // Password matching logic
+        const newPasswordInput = document.getElementById('newPassword');
+        const confirmNewPasswordInput = document.getElementById('confirmNewPassword');
+        const passwordMatchMsg = document.getElementById('newPasswordMatchMsg');
+        const resetPasswordBtn = document.getElementById('resetPasswordBtn');
+
+        function checkNewPasswordMatch() {
+            if (newPasswordInput.value === '' && confirmNewPasswordInput.value === '') {
+                passwordMatchMsg.textContent = '';
+                resetPasswordBtn.disabled = true;
+                return;
+            }
+            if (newPasswordInput.value === confirmNewPasswordInput.value) {
+                passwordMatchMsg.textContent = '✅ Password is matched';
+                passwordMatchMsg.classList.remove('bad');
+                passwordMatchMsg.classList.add('ok');
+                resetPasswordBtn.disabled = false;
+            } else {
+                passwordMatchMsg.textContent = '❌ Password is not match';
+                passwordMatchMsg.classList.remove('ok');
+                passwordMatchMsg.classList.add('bad');
+                resetPasswordBtn.disabled = true;
+            }
+        }
+        newPasswordInput.addEventListener('input', checkNewPasswordMatch);
+        confirmNewPasswordInput.addEventListener('input', checkNewPasswordMatch);
+
+        async function resetPassword() {
+            const username = document.getElementById('forgotUsername').value;
+            const newPassword = document.getElementById('newPassword').value;
+
+            const res = await fetch(`${API_BASE}/reset-password`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, newPassword })
+            });
+            
+            const data = await res.json();
+            if (data.success) {
+                showPopup('✅ Password reset successfully. Please log in.', 'ok');
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 1500);
+            } else {
+                showPopup(data.error || '❌ Failed to reset password. Please try again.', 'bad');
+            }
+        }
 
         async function login() {
             const username = document.getElementById("username").value;
             const password = document.getElementById("password").value;
-            const msgEl = document.getElementById("passwordMsg");
 
             if (!selectedRole) {
-                alert("Please choose Recruiter or Job Seeker first.");
+                showPopup("❌ Please choose Recruiter or Job Seeker first.", "bad");
                 return;
             }
 
@@ -412,7 +668,7 @@
 
             if (data.success) {
                 if (data.role !== selectedRole) {
-                    alert("Wrong role selected. Please choose correctly.");
+                    showPopup("❌ Wrong role selected. Please choose correctly.", "bad");
                     return;
                 }
 
@@ -429,8 +685,7 @@
                     }
                 }, 1500);
             } else {
-                msgEl.textContent = 'Invalid login. Check password.';
-                msgEl.style.color = 'red';
+                showPopup('❌ Invalid login. Please check your username and password.', "bad");
             }
         }
     </script>
