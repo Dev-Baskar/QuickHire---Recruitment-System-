@@ -172,7 +172,6 @@
         .form-field .field-msg.ok { color: var(--ok); }
         .form-field .field-msg.bad { color: var(--bad); }
         
-        /* --- NEW CSS ADDED HERE --- */
         .forgot-password-link {
             width: 100%;
             text-align: start; /* Aligns text to the left */
@@ -187,7 +186,6 @@
         .forgot-password-link a:hover {
             text-decoration: underline;
         }
-        /* ------------------------- */
 
         .login-button {
             width: 100%;
@@ -370,7 +368,8 @@
                 <a href="#" onclick="openForgotPasswordForm()">Forgot password?</a>
             </div>
             <button class="login-button" onclick="login()">Login</button>
-            <p class="note">Don’t have an account? <a href="register.html">Register here</a></p>
+            <!-- MODIFIED REGISTER LINK -->
+            <p class="note">Don’t have an account? <a id="registerLink" href="#">Register here</a></p>
         </div>
 
         <div class="form-container" id="forgotPasswordContainer">
@@ -438,6 +437,14 @@
             loginFormContainer.classList.add("show");
             document.getElementById("loginTitle").innerText =
                 role === "recruiter" ? "Recruiter Login" : "Job Seeker Login";
+            
+            // --- LOGIC ADDED HERE TO CHANGE REGISTER LINK ---
+            const registerLink = document.getElementById('registerLink');
+            if (role === 'recruiter') {
+                registerLink.href = 'recruiter-register.html';
+            } else if (role === 'jobseeker') {
+                registerLink.href = 'register.html';
+            }
         }
 
         function goBack() {
@@ -450,6 +457,8 @@
             // Clear inputs and messages
             document.getElementById("username").value = '';
             document.getElementById("password").value = '';
+            // Reset register link
+            document.getElementById('registerLink').href = '#';
         }
 
         function goBackFromForgot() {
