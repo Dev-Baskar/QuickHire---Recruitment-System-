@@ -4,191 +4,186 @@ const db = require("../db");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
+const multer = require('multer');
+const path = require('path');
 
-// OTP store for registration and forgot password
-let otpStore = {}; // { email: { otp: string, expires: Date } }
+// Multer configuration
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/');
+    },
+    filename: function (req, file, cb) {
+        cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
+    }
+});
+const upload = multer({ storage: storage });
 
-// ✅ Gmail SMTP Transporter
+// Nodemailer transporter setup
 const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: "baskar13008@gmail.com", // Replace with your Gmail
-    pass: "pfsgkpxepzptggho", // Replace with your App Password (no spaces)
-  },
+    service: "gmail",
+    auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_PASS,
+    },
 });
 
-// ✅ Send OTP for registration
+let otpStore = {};
+
+// Send OTP for registration
 router.post("/send-otp-email", (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.json({ success: false, error: "Email required" });
-
-  const otp = Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit
-  const expires = new Date(Date.now() + 10 * 60000); // 10 minutes expiry
-  otpStore[email] = { otp, expires };
-
-  transporter.sendMail({
-    from: "QuickHire <baskar13008@gmail.com>",
-    to: email,
-    subject: "Your QuickHire Registration OTP",
-    text: `Your OTP for registration is: ${otp}`
-  }, (err) => {
-    if (err) return res.json({ success: false, error: err.message });
-    res.json({ success: true });
-  });
-});
-
-// ✅ Verify OTP for registration
-router.post("/verify-otp-email", (req, res) => {
-  const { email, otp } = req.body;
-  const storedOtp = otpStore[email];
-
-  if (storedOtp && storedOtp.otp === otp && new Date() < storedOtp.expires) {
-    delete otpStore[email];
-    return res.json({ success: true });
-  }
-  res.json({ success: false, error: "Invalid or expired OTP" });
-});
-
-// ✅ Username availability check (for registration)
-router.get("/check-username/:username", (req, res) => {
-  const { username } = req.params;
-  const sql = "SELECT COUNT(*) AS count FROM users WHERE username = ?";
-  db.query(sql, [username], (err, results) => {
-    if (err) return res.json({ success: false, error: err.message });
-    res.json({ success: true, available: results[0].count === 0 });
-  });
-});
-
-// ✅ New: Check if username exists (for password reset)
-router.get("/check-username-for-reset/:username", (req, res) => {
-    const { username } = req.params;
-    const sql = "SELECT COUNT(*) AS count FROM users WHERE username = ?";
-    db.query(sql, [username], (err, results) => {
-        if (err) return res.json({ success: false, error: err.message });
-        res.json({ success: true, exists: results[0].count > 0 });
+    const { email, role } = req.body;
+    if (!email || !role) {
+        return res.status(400).json({ success: false, error: "Email and role required." });
+    }
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    const expires = new Date(Date.now() + 10 * 60000);
+    otpStore[email] = { otp, expires, role };
+    transporter.sendMail({
+        from: `QuickHire <${process.env.GMAIL_USER}>`,
+        to: email,
+        subject: `Your QuickHire ${role.charAt(0).toUpperCase() + role.slice(1)} Registration OTP`,
+        text: `Your OTP for registration is: ${otp}`
+    }, (err) => {
+        if (err) {
+            console.error("Email send failed:", err);
+            return res.status(500).json({ success: false, error: err.message });
+        }
+        res.json({ success: true, message: "OTP sent successfully." });
     });
 });
 
-// ✅ New: Send OTP for password reset
-router.post("/forgot-password-otp", (req, res) => {
-  const { username } = req.body;
-  if (!username) return res.json({ success: false, error: "Username is required." });
+// Verify OTP for registration
+router.post("/verify-otp-email", (req, res) => {
+    const { email, otp } = req.body;
+    const storedOtp = otpStore[email];
+    if (storedOtp && storedOtp.otp === otp && new Date() < storedOtp.expires) {
+        delete otpStore[email];
+        return res.json({ success: true, message: "OTP verified." });
+    }
+    res.status(400).json({ success: false, error: "Invalid or expired OTP." });
+});
 
-  const sql = "SELECT email FROM users WHERE username = ?";
-  db.query(sql, [username], (err, results) => {
-    if (err) return res.json({ success: false, error: "Database error." });
-    if (results.length === 0) return res.json({ success: false, error: "Username not found." });
+// Check username availability
+router.get("/check-username/:username", (req, res) => {
+    const { username } = req.params;
+    const { role } = req.query;
+    if (!role) return res.status(400).json({ success: false, error: "Role is required." });
+    const tableName = role === 'jobseeker' ? 'jobseekers' : 'recruiters';
+    const sql = `SELECT COUNT(*) AS count FROM ${tableName} WHERE username = ?`;
+    db.query(sql, [username], (err, results) => {
+        if (err) return res.status(500).json({ success: false, error: "Database error." });
+        res.json({ success: true, available: results[0].count === 0 });
+    });
+});
 
-    const userEmail = results[0].email;
-    const otp = Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit OTP
-    const expires = new Date(Date.now() + 10 * 60000); // 10 minutes expiry
-    otpStore[userEmail] = { otp, expires };
-    
-    const mailOptions = {
-      from: "QuickHire <baskar13008@gmail.com>",
-      to: userEmail,
-      subject: "QuickHire Password Reset OTP",
-      text: `Your OTP for password reset is: ${otp}. It is valid for 10 minutes.`,
+// Check company name availability
+router.get("/check-company-name/:companyName", (req, res) => {
+    const { companyName } = req.params;
+    const sql = `SELECT COUNT(*) AS count FROM recruiters WHERE company_name = ?`;
+    db.query(sql, [companyName], (err, results) => {
+        if (err) return res.status(500).json({ success: false, error: "Database error." });
+        res.json({ success: true, available: results[0].count === 0 });
+    });
+});
+
+// Check email availability
+router.get("/check-email/:email", (req, res) => {
+    const { email } = req.params;
+    const { role } = req.query;
+    if (!role) return res.status(400).json({ success: false, error: "Role is required." });
+    const tableName = role === 'jobseeker' ? 'jobseekers' : 'recruiters';
+    const sql = `SELECT COUNT(*) AS count FROM ${tableName} WHERE email = ?`;
+    db.query(sql, [email], (err, results) => {
+        if (err) return res.status(500).json({ success: false, error: "Database error." });
+        res.json({ success: true, available: results[0].count === 0 });
+    });
+});
+
+// Jobseeker Registration
+router.post("/register/jobseeker", async (req, res) => {
+    try {
+        const { fullname, username, email, phone, password } = req.body;
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const sql = `INSERT INTO jobseekers (fullname, username, email, phone, password) VALUES (?, ?, ?, ?, ?)`;
+        db.query(sql, [fullname, username, email, phone, hashedPassword], (err, result) => {
+            if (err) {
+                if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ success: false, error: "Username or email already in use." });
+                return res.status(500).json({ success: false, error: "Database error." });
+            }
+            res.status(201).json({ success: true, id: result.insertId, role: 'jobseeker' });
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: "Server error." });
+    }
+});
+
+// Recruiter Registration
+router.post("/register/recruiter", upload.single('company_logo'), async (req, res) => {
+    try {
+        const { administrator_name, username, email, phone, password, company_name } = req.body;
+        const companyLogoPath = req.file ? req.file.path : null;
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const sql = `INSERT INTO recruiters (administrator_name, username, email, phone, password, company_name, company_logo) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+        db.query(sql, [administrator_name, username, email, phone, hashedPassword, company_name, companyLogoPath], (err, result) => {
+            if (err) {
+                if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ success: false, error: "Username or email already in use." });
+                return res.status(500).json({ success: false, error: "Database error." });
+            }
+            res.status(201).json({ success: true, id: result.insertId, role: 'recruiter' });
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: "Server error." });
+    }
+});
+
+// ✅ MODIFIED: Universal Login now includes status in the JWT token
+router.post("/login", (req, res) => {
+    const { username, password, role } = req.body;
+    if (!username || !password || !role) {
+        return res.status(400).json({ success: false, error: "Username, password, and role are required." });
+    }
+
+    const finalizeLogin = async (user, userRole) => {
+        if (!user) {
+            return res.status(401).json({ success: false, error: "Invalid credentials." });
+        }
+        
+        const match = await bcrypt.compare(password, user.password);
+        if (!match) {
+            return res.status(401).json({ success: false, error: "Invalid credentials." });
+        }
+        
+        const tokenPayload = { 
+            id: user.id, 
+            role: userRole,
+            status: user.status || 'approved' // Admins/Jobseekers are always 'approved'
+        };
+
+        const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "1h" });
+        res.json({ success: true, token, role: userRole, id: user.id });
     };
 
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.error("Email send failed:", error);
-        return res.json({ success: false, error: "Failed to send OTP email." });
-      } else {
-        return res.json({ success: true, message: "OTP sent successfully." });
-      }
-    });
-  });
-});
-
-// ✅ New: Verify OTP for password reset
-router.post("/verify-otp-for-reset", (req, res) => {
-    const { username, otp } = req.body;
-    const sql = "SELECT email FROM users WHERE username = ?";
-    db.query(sql, [username], (err, results) => {
-        if (err || results.length === 0) return res.json({ success: false, error: "Username not found." });
-        const userEmail = results[0].email;
-        const storedOtp = otpStore[userEmail];
-        
-        if (storedOtp && storedOtp.otp === otp && new Date() < storedOtp.expires) {
-            return res.json({ success: true, message: "OTP verified successfully." });
-        }
-        res.json({ success: false, error: "Invalid or expired OTP." });
-    });
-});
-
-// ✅ New: Reset password with OTP
-router.post("/reset-password", async (req, res) => {
-    const { username, newPassword } = req.body;
-
-    const sql = "SELECT email FROM users WHERE username = ?";
-    db.query(sql, [username], async (err, results) => {
-        if (err || results.length === 0) return res.json({ success: false, error: "Username not found." });
-
-        // Hash the new password
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-        const updateSql = "UPDATE users SET password = ? WHERE username = ?";
-        db.query(updateSql, [hashedPassword, username], (updateErr) => {
-            if (updateErr) return res.json({ success: false, error: "Password update failed." });
-            res.json({ success: true, message: "Password reset successfully." });
+    if (role === 'jobseeker') {
+        const sql = `SELECT *, 'approved' as status FROM jobseekers WHERE username = ?`;
+        db.query(sql, [username], (err, rows) => {
+            if (err) return res.status(500).json({ success: false, error: "Database error." });
+            finalizeLogin(rows[0], 'jobseeker');
         });
-    });
-});
-
-
-// ✅ Register (Jobseeker / Recruiter)
-router.post("/register", async (req, res) => {
-  try {
-    const { fullname, username, email, phone, password, role } = req.body;
-
-    if (!fullname || !username || !email || !password) {
-      return res.json({ success: false, error: "All required fields must be filled" });
+    } else if (role === 'recruiter') {
+        const adminSql = `SELECT *, 'approved' as status FROM admins WHERE username = ?`;
+        db.query(adminSql, [username], (err, adminRows) => {
+            if (err) return res.status(500).json({ success: false, error: "Database error." });
+            if (adminRows.length > 0) {
+                finalizeLogin(adminRows[0], 'admin');
+            } else {
+                const recruiterSql = `SELECT * FROM recruiters WHERE username = ?`;
+                db.query(recruiterSql, [username], (err, recruiterRows) => {
+                    if (err) return res.status(500).json({ success: false, error: "Database error." });
+                    finalizeLogin(recruiterRows[0], 'recruiter');
+                });
+            }
+        });
     }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const sql = `INSERT INTO users (fullname, username, email, phone, password, role)
-                   VALUES (?, ?, ?, ?, ?, ?)`;
-
-    db.query(sql, [fullname, username, email, phone, hashedPassword, role], (err, result) => {
-      if (err) {
-        console.error(err);
-        return res.json({ success: false, error: err.sqlMessage || "DB Error" });
-      }
-      res.json({ success: true, id: result.insertId });
-    });
-  } catch (err) {
-    console.error(err);
-    res.json({ success: false, error: "Server error" });
-  }
-});
-
-// ✅ Login
-router.post("/login", (req, res) => {
-  const { username, password } = req.body;
-  const sql = "SELECT * FROM users WHERE username = ?";
-  db.query(sql, [username], async (err, rows) => {
-    if (err) return res.json({ success: false, error: "DB Error" });
-    if (rows.length === 0) {
-      return res.json({ success: false, error: "Invalid credentials" });
-    }
-    const user = rows[0];
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) {
-      return res.json({ success: false, error: "Invalid credentials" });
-    }
-    const token = jwt.sign({ id: user.id, role: user.role }, "your_secret_key", {
-      expiresIn: "1h",
-    });
-    res.json({
-      success: true,
-      token,
-      role: user.role,
-      id: user.id,
-    });
-  });
 });
 
 module.exports = router;

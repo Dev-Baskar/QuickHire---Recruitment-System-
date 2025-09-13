@@ -763,7 +763,7 @@ nav {
   background: linear-gradient(90deg, #7b2ff7, #f107a3);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  /* color: #1184c7; */
+  /* color: #1184c7; */ 
 }
 
 .footer-section p {

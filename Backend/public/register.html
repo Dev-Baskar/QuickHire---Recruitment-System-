@@ -39,7 +39,6 @@
         overflow: hidden;
       }
 
-      /* Left Panel */
       .left-panel {
         flex: 1;
         background-color: var(--primary);
@@ -55,7 +54,6 @@
         height: 100vh;
       }
 
-      /* Right Panel */
       .right-panel {
         flex: 1;
         background-color: var(--light-gray);
@@ -63,6 +61,8 @@
         justify-content: center;
         align-items: center;
         padding: 20px;
+        height: 100vh;
+        overflow-y: auto;
       }
 
       .register-form {
@@ -123,7 +123,6 @@
         box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.15);
       }
 
-      /* Password input with icon */
       .password-field {
         position: relative;
       }
@@ -139,13 +138,12 @@
         color: #999;
         cursor: pointer;
         font-size: 14px;
-        line-height: 1; /* Aligns the icon perfectly with the text */
+        line-height: 1;
       }
       .password-field .show-password-icon:hover {
         color: var(--primary);
       }
 
-      /* Email + Verify inline */
       .inline {
         display: flex;
         gap: 8px;
@@ -185,7 +183,6 @@
         background: #e5f0ff;
       }
 
-      /* OTP inputs */
       .otp-wrap {
         display: none;
         margin-top: 6px;
@@ -239,15 +236,41 @@
         text-decoration: underline;
       }
 
-      /* Username and Email message styling */
       #usernameMsg,
       #emailMsg {
         font-size: 11px;
         margin-top: 4px;
       }
+      
+      .popup {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          padding: 12px 20px;
+          border-radius: 8px;
+          color: white;
+          font-size: 14px;
+          font-weight: 600;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          transform: translateX(120%);
+          transition: transform 0.4s ease-in-out;
+          z-index: 1000;
+      }
+      .popup.show {
+          transform: translateX(0);
+      }
+      .popup.ok {
+          background-color: var(--ok);
+      }
+      .popup.bad {
+          background-color: var(--bad);
+      }
+
     </style>
   </head>
   <body>
+    <div id="popup"></div>
+
     <div class="left-panel">
       <div>QuickHire</div>
     </div>
@@ -263,7 +286,7 @@
             <input
               id="fullname"
               type="text"
-              placeholder="e.g., Rohit Sharma"
+              placeholder="e.g., John Doe"
               required
             />
           </div>
@@ -275,10 +298,7 @@
               placeholder="choose a username"
               required
             />
-            <div
-              id="usernameMsg"
-              style="font-size: 11px; margin-top: 4px"
-            ></div>
+            <div id="usernameMsg" style="font-size: 11px; margin-top: 4px"></div>
           </div>
         </div>
 
@@ -349,10 +369,7 @@
             ></i>
           </div>
         </div>
-        <div
-          id="passwordMatchMsg"
-          style="font-size: 11px; text-align: left; margin-top: -8px"
-        ></div>
+        <div id="passwordMatchMsg" style="font-size: 11px; text-align: left; margin-top: -8px"></div>
 
         <div class="actions">
           <button
@@ -370,7 +387,6 @@
         </div>
       </div>
     </div>
-
     <script src="register.js"></script>
   </body>
 </html>

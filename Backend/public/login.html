@@ -259,7 +259,7 @@
             transform: translateY(0);
         }
         .popup.bad {
-             background: var(--bad);
+            background: var(--bad);
         }
         
         .password-field {
@@ -309,7 +309,7 @@
             color: var(--primary);
             border: none;
             padding: 6px;
-            font-size: 12px;      
+            font-size: 12px; 
             cursor: pointer;
             text-align: center;
         }
@@ -352,24 +352,24 @@
         <div class="form-container" id="loginFormContainer">
             <button class="back-arrow" onclick="goBack()"><i class="fas fa-arrow-left"></i> Back</button>
             <h2 id="loginTitle">Login</h2>
-            
-            <div class="form-field">
-                <label for="username">Username</label>
-                <input type="text" id="username" placeholder="Enter your username">
-            </div>
-            
-            <div class="form-field password-field">
-                <label for="password">Password</label>
-                <input type="password" id="password" placeholder="Enter your password">
-                <i class="fas fa-eye-slash show-password-icon" onclick="togglePasswordVisibility('password')"></i>
-            </div>
+            <form id="loginForm" onsubmit="event.preventDefault(); login();">
+                <div class="form-field">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="Enter your username" required>
+                </div>
+                
+                <div class="form-field password-field">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter your password" required>
+                    <i class="fas fa-eye-slash show-password-icon" onclick="togglePasswordVisibility('password')"></i>
+                </div>
 
-            <div class="forgot-password-link">
-                <a href="#" onclick="openForgotPasswordForm()">Forgot password?</a>
-            </div>
-            <button class="login-button" onclick="login()">Login</button>
-            <!-- MODIFIED REGISTER LINK -->
-            <p class="note">Don’t have an account? <a id="registerLink" href="#">Register here</a></p>
+                <div class="forgot-password-link">
+                    <a href="#" onclick="openForgotPasswordForm()">Forgot password?</a>
+                </div>
+                <button class="login-button" type="submit">Login</button>
+                <p class="note">Don’t have an account? <a id="registerLink" href="#">Register here</a></p>
+            </form>
         </div>
 
         <div class="form-container" id="forgotPasswordContainer">
@@ -403,7 +403,7 @@
             </div>
             
             <div id="forgotStep3" style="display: none;">
-                 <div class="form-field password-field">
+                <div class="form-field password-field">
                     <label for="newPassword">New Password</label>
                     <input type="password" id="newPassword" placeholder="Enter new password">
                     <i class="fas fa-eye-slash show-password-icon" onclick="togglePasswordVisibility('newPassword')"></i>
@@ -438,7 +438,6 @@
             document.getElementById("loginTitle").innerText =
                 role === "recruiter" ? "Recruiter Login" : "Job Seeker Login";
             
-            // --- LOGIC ADDED HERE TO CHANGE REGISTER LINK ---
             const registerLink = document.getElementById('registerLink');
             if (role === 'recruiter') {
                 registerLink.href = 'recruiter-register.html';
@@ -454,10 +453,8 @@
                 roleSelection.style.display = "flex";
             }, 500);
             
-            // Clear inputs and messages
             document.getElementById("username").value = '';
             document.getElementById("password").value = '';
-            // Reset register link
             document.getElementById('registerLink').href = '#';
         }
 
@@ -467,7 +464,6 @@
                 loginFormContainer.classList.add("show");
             }, 500);
             
-            // Reset forgot password form
             document.getElementById('forgotStep1').style.display = 'block';
             document.getElementById('forgotStep2').style.display = 'none';
             document.getElementById('forgotStep3').style.display = 'none';
@@ -499,13 +495,16 @@
         }
         
         function openForgotPasswordForm() {
+            if (!selectedRole) {
+                showPopup("Please select a role first.", "bad");
+                return;
+            }
             loginFormContainer.classList.remove("show");
             setTimeout(() => {
                 forgotPasswordContainer.classList.add("show");
             }, 500);
         }
 
-        // Forgot password form logic
         document.getElementById("forgotUsername").addEventListener('input', (e) => {
             const username = e.target.value.trim();
             const msgEl = document.getElementById("usernameForgotMsg");
@@ -520,10 +519,14 @@
             }
 
             debounceTimeout = setTimeout(async () => {
-                const res = await fetch(`${API_BASE}/check-username-for-reset/${username}`);
+                const res = await fetch(`${API_BASE}/forgot-password-otp`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, role: selectedRole })
+                });
                 const data = await res.json();
                 
-                if (data.exists) {
+                if (data.success) {
                     msgEl.textContent = '✅ Username exists';
                     msgEl.classList.remove('bad');
                     msgEl.classList.add('ok');
@@ -537,7 +540,6 @@
             }, 500);
         });
 
-        // OTP input functionality
         const otpInputs = document.querySelectorAll('#forgotStep2 .otp-inputs input');
         otpInputs.forEach((input, index) => {
             input.addEventListener('input', () => {
@@ -571,11 +573,10 @@
 
         async function sendOtp() {
             const username = document.getElementById("forgotUsername").value;
-            forgotPasswordUsername = username;
             const res = await fetch(`${API_BASE}/forgot-password-otp`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username })
+                body: JSON.stringify({ username, role: selectedRole })
             });
 
             const data = await res.json();
@@ -610,7 +611,6 @@
             }
         }
         
-        // Password matching logic
         const newPasswordInput = document.getElementById('newPassword');
         const confirmNewPasswordInput = document.getElementById('confirmNewPassword');
         const passwordMatchMsg = document.getElementById('newPasswordMatchMsg');
@@ -640,11 +640,12 @@
         async function resetPassword() {
             const username = document.getElementById('forgotUsername').value;
             const newPassword = document.getElementById('newPassword').value;
+            const role = selectedRole;
 
             const res = await fetch(`${API_BASE}/reset-password`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, newPassword })
+                body: JSON.stringify({ username, newPassword, role })
             });
             
             const data = await res.json();
@@ -670,17 +671,12 @@
             const res = await fetch("http://localhost:5000/api/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ username, password, role: selectedRole })
             });
 
             const data = await res.json();
 
             if (data.success) {
-                if (data.role !== selectedRole) {
-                    showPopup("❌ Wrong role selected. Please choose correctly.", "bad");
-                    return;
-                }
-
                 localStorage.setItem("token", data.token);
                 localStorage.setItem("role", data.role);
                 localStorage.setItem("userId", data.id);
