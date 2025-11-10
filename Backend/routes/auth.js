@@ -1,3 +1,4 @@
+// Backend/routes/auth.js
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
@@ -7,14 +8,10 @@ const nodemailer = require("nodemailer");
 const multer = require('multer');
 const path = require('path');
 
-// Multer configuration for file uploads
+// Multer configuration
 const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, 'uploads/');
-    },
-    filename: function (req, file, cb) {
-        cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
-    }
+    destination: function (req, file, cb) { cb(null, 'uploads/'); },
+    filename: function (req, file, cb) { cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname)); }
 });
 const upload = multer({ storage: storage });
 
@@ -27,21 +24,15 @@ const transporter = nodemailer.createTransport({
     },
 });
 
-// otpStore will now use USERNAME as the key for password resets
 let otpStore = {};
 
 // Send OTP for registration
 router.post("/send-otp-email", (req, res) => {
     const { email, role } = req.body;
-    if (!email || !role) {
-        return res.status(400).json({ success: false, error: "Email and role required." });
-    }
+    if (!email || !role) return res.status(400).json({ success: false, error: "Email and role required." });
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
     const expires = new Date(Date.now() + 10 * 60000);
-    
-    // Store by email for registration
     otpStore[email] = { otp, expires, role };
-    
     transporter.sendMail({
         from: `QuickHire <${process.env.GMAIL_USER}>`,
         to: email,
@@ -61,13 +52,13 @@ router.post("/verify-otp-email", (req, res) => {
     const { email, otp } = req.body;
     const storedOtp = otpStore[email];
     if (storedOtp && storedOtp.otp === otp && new Date() < storedOtp.expires) {
-        delete otpStore[email]; // Clear OTP after use
+        delete otpStore[email];
         return res.json({ success: true, message: "OTP verified." });
     }
     res.status(400).json({ success: false, error: "Invalid or expired OTP." });
 });
 
-// Check username availability (Your login.html needs this)
+// Check username availability
 router.get("/check-username/:username", (req, res) => {
     const { username } = req.params;
     const { role } = req.query;
@@ -121,13 +112,17 @@ router.post("/register/jobseeker", async (req, res) => {
     }
 });
 
-// Recruiter Registration
+// --- MODIFIED: Recruiter Registration ---
 router.post("/register/recruiter", upload.single('company_logo'), async (req, res) => {
     try {
         const { administrator_name, username, email, phone, password, company_name } = req.body;
         const companyLogoPath = req.file ? req.file.path : null;
         const hashedPassword = await bcrypt.hash(password, 10);
-        const sql = `INSERT INTO recruiters (administrator_name, username, email, phone, password, company_name, company_logo) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+        
+        // --- THIS IS THE KEY CHANGE ---
+        // Explicitly set the status to 'pending' on creation
+        const sql = `INSERT INTO recruiters (administrator_name, username, email, phone, password, company_name, company_logo, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`;
+
         db.query(sql, [administrator_name, username, email, phone, hashedPassword, company_name, companyLogoPath], (err, result) => {
             if (err) {
                 if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ success: false, error: "Username or email already in use." });
@@ -139,10 +134,10 @@ router.post("/register/recruiter", upload.single('company_logo'), async (req, re
         res.status(500).json({ success: false, error: "Server error." });
     }
 });
+// --- End of Modification ---
 
 // Universal Login with status check
 router.post("/login", (req, res) => {
-    // ... (Your existing login code is fine, no changes needed here) ...
     const { username, password, role } = req.body;
     if (!username || !password || !role) {
         return res.status(400).json({ success: false, error: "Username, password, and role are required." });
@@ -158,6 +153,7 @@ router.post("/login", (req, res) => {
             return res.status(401).json({ success: false, error: "Invalid credentials." });
         }
         
+        // Include status in the token payload
         const tokenPayload = { 
             id: user.id, 
             role: userRole,
@@ -165,7 +161,8 @@ router.post("/login", (req, res) => {
         };
 
         const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "1h" });
-        res.json({ success: true, token, role: userRole, id: user.id, status: user.status });
+        // Return status to the frontend
+        res.json({ success: true, token, role: userRole, id: user.id, status: user.status || 'approved' });
     };
 
     if (role === 'jobseeker') {
@@ -174,13 +171,14 @@ router.post("/login", (req, res) => {
             if (err) return res.status(500).json({ success: false, error: "Database error." });
             finalizeLogin(rows[0], 'jobseeker');
         });
-    } else if (role === 'recruiter') {
+    } else if (role === 'recruiter') { // This handles both admin and recruiter
         const adminSql = `SELECT *, 'approved' as status FROM admins WHERE username = ?`;
         db.query(adminSql, [username], (err, adminRows) => {
             if (err) return res.status(500).json({ success: false, error: "Database error." });
             if (adminRows.length > 0) {
                 finalizeLogin(adminRows[0], 'admin');
             } else {
+                // Get the recruiter and their actual status
                 const recruiterSql = `SELECT * FROM recruiters WHERE username = ?`;
                 db.query(recruiterSql, [username], (err, recruiterRows) => {
                     if (err) return res.status(500).json({ success: false, error: "Database error." });
@@ -191,36 +189,37 @@ router.post("/login", (req, res) => {
     }
 });
 
-// Admin routes (Your existing code is fine)
+// --- ADMIN ROUTES ---
+// (Note: These should also be protected by middleware, but we leave them here for now)
 router.get('/admin/recruiters/pending', (req, res) => {
-    // ... (no changes) ...
     const sql = `SELECT id, company_name, administrator_name, email, phone, company_logo FROM recruiters WHERE status = 'pending'`;
     db.query(sql, (err, results) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ success: false, error: "Database error." });
-        }
+        if (err) return res.status(500).json({ success: false, error: "Database error." });
         res.json({ success: true, pendingRecruiters: results });
     });
 });
+
+router.get('/admin/recruiters/approved', (req, res) => {
+    const sql = `SELECT id, company_name, administrator_name, email, phone, company_logo FROM recruiters WHERE status = 'approved'`;
+    db.query(sql, (err, results) => {
+        if (err) return res.status(500).json({ success: false, error: "Database error." });
+        res.json({ success: true, approvedRecruiters: results });
+    });
+});
+
 router.post('/admin/recruiters/update-status', (req, res) => {
-    // ... (no changes) ...
     const { id, status } = req.body;
     if (!['approved', 'rejected'].includes(status)) {
         return res.status(400).json({ success: false, error: "Invalid status provided." });
     }
     const sql = `UPDATE recruiters SET status = ? WHERE id = ?`;
     db.query(sql, [status, id], (err, result) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ success: false, error: "Database error." });
-        }
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ success: false, error: "Recruiter not found." });
-        }
+        if (err) return res.status(500).json({ success: false, error: "Database error." });
+        if (result.affectedRows === 0) return res.status(404).json({ success: false, error: "Recruiter not found." });
         res.json({ success: true, message: `Recruiter status updated to ${status}.` });
     });
 });
+
 
 
 // --- NEW PASSWORD RESET ROUTES ---

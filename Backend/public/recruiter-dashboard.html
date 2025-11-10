@@ -15,6 +15,8 @@
       --success: #28a745;
       --danger: #dc3545;
       --warning: #ffc107;
+      --warning-light: #fff3cd; /* Light yellow for background */
+      --warning-dark: #856404;  /* Dark yellow for text */
       --info: #17a2b8;
       --radius: 8px;
       --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -36,6 +38,7 @@
     .header { height: 60px; background: #fff; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
     .header h1 { font-size: 24px; color: var(--text); }
     .user { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .user span { font-weight: 600; }
     .user img { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--primary); }
 
     /* Dashboard content */
@@ -83,6 +86,32 @@
       color: var(--dark);
       font-weight: 600;
     }
+    
+    /* --- NEW: Pending Message Style --- */
+    #pending-message {
+        display: none; /* Hidden by default */
+        padding: 40px;
+        text-align: center;
+        margin: 20px;
+        background: var(--warning-light);
+        border: 1px solid var(--warning);
+        color: var(--warning-dark);
+        border-radius: var(--radius);
+    }
+    #pending-message h2 {
+        color: var(--warning-dark);
+    }
+    #pending-message p {
+        margin-top: 10px;
+        font-size: 16px;
+    }
+    #pending-message a {
+        color: var(--primary);
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: underline;
+    }
+
   </style>
 </head>
 <body>
@@ -90,29 +119,38 @@
   <aside class="sidebar" id="sidebar">
     <h2>QuickHire</h2>
     <ul class="nav">
-      <li class="active">Dashboard</li>
-      <li onclick="location.href='recruiter-jobposts.html'">Job Posts</li>
-      <li onclick="location.href='recruiter-applications.html'">Applications</li>
-      <li>Meetings</li>
-      <li>SAS Process</li>
-      <li>Invite History</li>
-      <li>Company List</li>
-      <li onclick="location.href='admin-verification.html'">Company Verification</li>
-      <li>Admin</li>
-      <li>Account</li>
+      <li class="active" id="nav-dashboard" onclick="location.href='recruiter-dashboard.html'">Dashboard</li>
+      <li id="nav-job-posts" onclick="location.href='recruiter-jobposts.html'">Job Posts</li>
+      <li id="nav-applications" onclick="location.href='recruiter-applications.html'">Applications</li>
+      <li id="nav-meetings">Meetings</li>
+      <li id="nav-sas-process">SAS Process</li>
+      <li id="nav-invite-history">Invite History</li>
+      
+      <li id="nav-company-list">Company List</li>
+      <li id="nav-company-verification" onclick="location.href='admin-verification.html'">Company Verification</li>
+      <li id="nav-admin">Admin</li>
+      
+      <li id="nav-account">Account</li>
+      <li id="nav-logout" onclick="logout()">Logout</li>
     </ul>
   </aside>
 
   <div class="main">
     <header class="header">
-      <h1>Dashboard</h1>
+      <h1 id="page-title">Dashboard</h1>
       <div class="user">
-        <span>Recruiter</span>
+        <span id="user-role-text">Recruiter</span>
         <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'%3E%3Cpath fill='%23ccc' d='M16 16c4.4 0 8-3.6 8-8s-3.6-8-8-8-8 3.6-8 8 3.6 8 8 8zm0 4c-5.9 0-12 2.9-12 6v2c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2v-2c0-3.1-6.1-6-12-6z'/%3E%3C/svg%3E" alt="User">
       </div>
     </header>
 
-    <section class="content">
+    <div id="pending-message">
+        <h2>Your company is under verification.</h2>
+        <p>Please wait for an administrator to approve your account. You will be notified via email once your account is active.
+        <br>You can <a onclick="logout()">logout</a> and check back later.</p>
+    </div>
+
+    <section class="content" id="main-content">
       <div class="cards">
         <div class="card"><h3>Job Posts</h3><span id="jobPostsCount">0</span></div>
         <div class="card"><h3>Applications</h3><span id="applicationsCount">0</span></div>
@@ -139,176 +177,193 @@
   </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-  const API_BASE = "http://localhost:5000/api/dashboard";
-const AUTH_API_BASE = "http://localhost:5000/api/auth";
 
-let userRole;
-let userStatus;
+<script>
+const API_BASE = "http://localhost:5000/api/dashboard";
+const token = localStorage.getItem('token');
+const userRole = localStorage.getItem('role');
+const userStatus = localStorage.getItem('status'); // <-- Get status
+const userId = localStorage.getItem('userId');
+
+// --- 1. Role & Login Check (Runs on page load) ---
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Check if user is logged in at all
+    if (!token || !userRole || !userId || !userStatus) {
+        alert('You are not logged in. Redirecting to login.');
+        window.location.href = 'login.html';
+        return;
+    }
+
+    // 2. Adjust UI based on role and status
+    if (userRole === 'admin') {
+        setupAdminUI();
+        loadDashboard();
+    } else if (userRole === 'recruiter') {
+        if (userStatus === 'approved') {
+            setupRecruiterUI();
+            loadDashboard();
+        } else {
+            // This is for "pending" or "rejected"
+            setupPendingUI();
+        }
+    }
+});
+
+function setupAdminUI() {
+    document.getElementById('user-role-text').textContent = 'Admin';
+    // Admin sees all links, so we don't hide anything.
+}
+
+function setupRecruiterUI() {
+    document.getElementById('user-role-text').textContent = 'Recruiter';
+        
+    // Recruiter has a limited view. Hide admin elements.
+    const navCompanyList = document.getElementById('nav-company-list');
+    const navCompanyVerification = document.getElementById('nav-company-verification');
+    const navAdmin = document.getElementById('nav-admin');
+
+    if (navCompanyList) navCompanyList.style.display = 'none';
+    if (navCompanyVerification) navCompanyVerification.style.display = 'none';
+    if (navAdmin) navAdmin.style.display = 'none';
+}
+
+function setupPendingUI() {
+    // Change header title
+    document.getElementById('page-title').textContent = 'Account Pending';
+    document.getElementById('user-role-text').textContent = 'Pending Approval';
+    
+    // Hide the sidebar and the main content
+    document.getElementById('sidebar').style.display = 'none';
+    document.getElementById('main-content').style.display = 'none';
+    
+    // Show the pending message
+    document.getElementById('pending-message').style.display = 'block';
+
+    // Optional: Make the user icon yellow/warning
+    document.querySelector('.user img').style.borderColor = 'var(--warning)';
+}
+
+
+// --- 2. Logout Function ---
+function logout() {
+    localStorage.clear();
+    window.location.href = 'login.html';
+}
+
+// --- 3. Dashboard Data Loading (Chart.js, etc.) ---
 
 // Animation function
 function animateCountUp(elementId, targetValue, duration = 500) {
-    const element = document.getElementById(elementId);
-    if (!element) return;
-    const startValue = parseInt(element.textContent, 10);
-    const startTime = performance.now();
+  const element = document.getElementById(elementId);
+  if (!element) return; // Add check
+  const startValue = parseInt(element.textContent, 10) || 0;
+  const startTime = performance.now();
 
-    function updateCount(currentTime) {
-        const elapsedTime = currentTime - startTime;
-        const progress = Math.min(elapsedTime / duration, 1);
-        const currentValue = Math.floor(progress * targetValue);
-        element.textContent = currentValue;
+  function updateCount(currentTime) {
+    const elapsedTime = currentTime - startTime;
+    const progress = Math.min(elapsedTime / duration, 1);
+    const currentValue = Math.floor(progress * (targetValue - startValue) + startValue);
+    element.textContent = currentValue;
 
-        if (progress < 1) {
-            requestAnimationFrame(updateCount);
-        }
+    if (progress < 1) {
+      requestAnimationFrame(updateCount);
     }
-    requestAnimationFrame(updateCount);
+  }
+  requestAnimationFrame(updateCount);
 }
 
-// Function to decode JWT and get user info
-function getUserInfo() {
-    const token = localStorage.getItem('token');
-    if (!token) return null;
-    try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        return JSON.parse(jsonPayload);
-    } catch (e) {
-        console.error("Failed to decode token", e);
-        return null;
+// Load all dashboard data
+async function loadDashboard() {
+  try {
+    // --- Create Authorization Header ---
+    const authHeader = {
+        'Authorization': `Bearer ${token}`
+    };
+
+    // --- Fetch data using the token ---
+    const [statsRes, appsPerJobRes, jobPostsOverTimeRes, appStatusRes] = await Promise.all([
+      fetch(`${API_BASE}/stats`, { headers: authHeader }),
+      fetch(`${API_BASE}/applications-per-job`, { headers: authHeader }),
+      fetch(`${API_BASE}/job-posts-over-time`, { headers: authHeader }),
+      fetch(`${API_BASE}/application-status`, { headers: authHeader })
+    ]);
+    // --- End of Modification ---
+
+    // Check for auth error
+    if (statsRes.status === 401) {
+        alert('Session expired. Please log in again.');
+        logout();
+        return;
     }
-}
 
-// Function to render the dashboard based on user's role and status
-async function renderDashboard(userInfo) {
-    userRole = userInfo.role;
-    userStatus = userInfo.status;
-    
-    const sidebar = document.getElementById('sidebar');
-    const dashboardTitle = document.querySelector('.header h1');
-    const userRoleDisplay = document.querySelector('.user span');
-    const dashboardContent = document.querySelector('.content');
-
-    // Default state: hide everything
-    sidebar.style.display = 'none';
-    dashboardContent.innerHTML = '';
-    
-    if (userRole === 'admin') {
-        dashboardTitle.textContent = "Admin Dashboard";
-        userRoleDisplay.textContent = "Admin";
-        sidebar.style.display = 'flex';
-        // Add admin-specific sidebar items and routes here
-        
-    } else if (userRole === 'recruiter') {
-        if (userStatus === 'approved') {
-            dashboardTitle.textContent = "Recruiter Dashboard";
-            userRoleDisplay.textContent = "Recruiter";
-            sidebar.style.display = 'flex';
-            loadDashboard(userInfo.id);
-        } else {
-            // Unverified recruiter view
-            dashboardTitle.textContent = "Recruiter Dashboard";
-            userRoleDisplay.textContent = "Your company is under verification";
-            userRoleDisplay.style.color = "orange";
-            dashboardContent.innerHTML = `
-                <div style="text-align: center; padding: 50px;">
-                    <h2 style="color: orange;">Your company registration is under verification.</h2>
-                    <p>Please wait for an administrator to approve your account. We will notify you via email once your account is active.</p>
-                </div>
-            `;
-        }
-    }
-}
-
-// Load all dashboard data in parallel
-async function loadDashboard(recruiter_id) {
-    // This function will only be called for approved recruiters and admins
-    // You can keep the existing code for loading charts and stats here
-    try {
-        const [statsRes, appsPerJobRes, jobPostsOverTimeRes, appStatusRes] = await Promise.all([
-          fetch(`${API_BASE}/stats?recruiter_id=${recruiter_id}`),
-          fetch(`${API_BASE}/applications-per-job?recruiter_id=${recruiter_id}`),
-          fetch(`${API_BASE}/job-posts-over-time?recruiter_id=${recruiter_id}`),
-          fetch(`${API_BASE}/application-status?recruiter_id=${recruiter_id}`)
-        ]);
-    
-        const statsData = await statsRes.json();
-        if (statsData.success && statsData.stats) {
-          animateCountUp("jobPostsCount", statsData.stats.jobPosts);
-          animateCountUp("applicationsCount", statsData.stats.applications);
-          animateCountUp("companiesCount", statsData.stats.companies);
-          animateCountUp("loginsCount", statsData.stats.logins);
-          animateCountUp("editRequestsCount", statsData.stats.editRequests);
-        } else {
-          console.error("Failed to load dashboard stats:", statsData.error || "Unknown error");
-        }
-    
-        const appsPerJobData = await appsPerJobRes.json();
-        if (appsPerJobData.success && appsPerJobData.data) {
-          new Chart(document.getElementById("barChart"), {
-            type: "bar",
-            data: {
-              labels: appsPerJobData.data.map(r => r.jobTitle),
-              datasets: [{
-                label: "Applications",
-                data: appsPerJobData.data.map(r => r.applications),
-                backgroundColor: "rgba(26, 115, 232, 0.7)"
-              }]
-            },
-            options: { responsive: true, plugins: { legend: { display: false } } }
-          });
-        }
-    
-        const jobPostsOverTimeData = await jobPostsOverTimeRes.json();
-        if (jobPostsOverTimeData.success && jobPostsOverTimeData.data) {
-          new Chart(document.getElementById("lineChart"), {
-            type: "line",
-            data: {
-              labels: jobPostsOverTimeData.data.map(r => r.month),
-              datasets: [{
-                label: "Job Posts",
-                data: jobPostsOverTimeData.data.map(r => r.count),
-                borderColor: "rgba(26, 115, 232, 1)",
-                backgroundColor: "rgba(26, 115, 232, 0.2)",
-                fill: true,
-                tension: 0.3
-              }]
-            }
-          });
-        }
-    
-        const appStatusData = await appStatusRes.json();
-        if (appStatusData.success && appStatusData.data) {
-          new Chart(document.getElementById("pieChart"), {
-            type: "pie",
-            data: {
-              labels: appStatusData.data.map(r => r.status),
-              datasets: [{
-                data: appStatusData.data.map(r => r.count),
-                backgroundColor: ["#28a745", "#dc3545", "#ffc107"]
-              }]
-            }
-          });
-        }
-    
-      } catch (error) {
-        console.error("Failed to load dashboard data:", error);
-      }
-}
-
-// Initialize dashboard with user info
-document.addEventListener('DOMContentLoaded', () => {
-    const userInfo = getUserInfo();
-    if (userInfo) {
-        renderDashboard(userInfo);
+    const statsData = await statsRes.json();
+    if (statsData.success && statsData.stats) {
+      animateCountUp("jobPostsCount", statsData.stats.jobPosts);
+      animateCountUp("applicationsCount", statsData.stats.applications);
+      animateCountUp("companiesCount", statsData.stats.companies);
+      animateCountUp("loginsCount", statsData.stats.logins);
+      animateCountUp("editRequestsCount", statsData.stats.editRequests);
     } else {
-        window.location.href = 'login.html';
+      console.error("Failed to load dashboard stats:", statsData.error || "Unknown error");
     }
-});
+
+    const appsPerJobData = await appsPerJobRes.json();
+    if (appsPerJobData.success && appsPerJobData.data) {
+      new Chart(document.getElementById("barChart"), {
+        type: "bar",
+        data: {
+          labels: appsPerJobData.data.map(r => r.jobTitle),
+          datasets: [{
+            label: "Applications",
+            data: appsPerJobData.data.map(r => r.applications),
+            backgroundColor: "rgba(26, 115, 232, 0.7)"
+          }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+      });
+    }
+
+    const jobPostsOverTimeData = await jobPostsOverTimeRes.json();
+    if (jobPostsOverTimeData.success && jobPostsOverTimeData.data) {
+      new Chart(document.getElementById("lineChart"), {
+        type: "line",
+        data: {
+          labels: jobPostsOverTimeData.data.map(r => r.month),
+          datasets: [{
+            label: "Job Posts",
+            data: jobPostsOverTimeData.data.map(r => r.count),
+            borderColor: "rgba(26, 115, 232, 1)",
+            backgroundColor: "rgba(26, 115, 232, 0.2)",
+            fill: true,
+            tension: 0.3
+          }]
+        }
+      });
+    }
+
+    const appStatusData = await appStatusRes.json();
+    if (appStatusData.success && appStatusData.data) {
+      new Chart(document.getElementById("pieChart"), {
+        type: "pie",
+        data: {
+          labels: appStatusData.data.map(r => r.status),
+          datasets: [{
+            data: appStatusData.data.map(r => r.count),
+            backgroundColor: ["#28a745", "#dc3545", "#ffc107"]
+          }]
+        }
+      });
+    }
+
+  } catch (error) {
+    console.error("Failed to load dashboard data:", error);
+    if (error instanceof TypeError) {
+        alert('Your session has expired. Please log in again.');
+        logout();
+    }
+  }
+}
 </script>
+
 </body>
 </html>

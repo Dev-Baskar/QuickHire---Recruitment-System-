@@ -1,4 +1,4 @@
-// routes/job_posts.js
+// Backend/routes/job_posts.js
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
@@ -6,10 +6,10 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-// ✅ Multer config
+// Multer config (unchanged)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/"); // upload folder
+    cb(null, "uploads/");
   },
   filename: (req, file, cb) => {
     cb(null, Date.now() + path.extname(file.originalname));
@@ -17,13 +17,16 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// ✅ Helper
+// Helper (unchanged)
 const toInt = (v) => (v ? parseInt(v, 10) : null);
 
 // ------------------ CREATE JOB ------------------
+// Now uses req.user.id
 router.post("/", upload.single("logo"), (req, res) => {
+  // --- MODIFIED: Get ID from token ---
+  const { id: recruiter_id } = req.user; 
+  
   const {
-    recruiter_id,
     company,
     title,
     location,
@@ -48,7 +51,7 @@ router.post("/", upload.single("logo"), (req, res) => {
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
 
   const values = [
-    toInt(recruiter_id),
+    recruiter_id, // Use ID from token
     company,
     title,
     location,
@@ -73,114 +76,133 @@ router.post("/", upload.single("logo"), (req, res) => {
 });
 
 // ------------------ GET JOBS ------------------
+// Now role-aware
 router.get("/", (req, res) => {
-  const recruiter_id = toInt(req.query.recruiter_id);
-  const sql = recruiter_id
-    ? `SELECT * FROM job_posts WHERE recruiter_id=? ORDER BY created_at DESC`
-    : `SELECT * FROM job_posts ORDER BY created_at DESC`;
+  const { id, role } = req.user;
 
-  db.query(sql, recruiter_id ? [recruiter_id] : [], (err, rows) => {
+  let sql, params;
+  if (role === 'admin') {
+    // Admin gets all jobs
+    sql = `SELECT * FROM job_posts ORDER BY created_at DESC`;
+    params = [];
+  } else {
+    // Recruiter gets only their jobs
+    const recruiter_id = id;
+    sql = `SELECT * FROM job_posts WHERE recruiter_id=? ORDER BY created_at DESC`;
+    params = [recruiter_id];
+  }
+
+  db.query(sql, params, (err, rows) => {
     if (err) return res.status(500).json({ success: false, message: err.message });
     res.json({ success: true, jobs: rows });
   });
 });
 
 // ------------------ UPDATE JOB ------------------
+// Now checks ownership
 router.put("/:id", upload.single("logo"), (req, res) => {
-  const { id } = req.params;
-  const recruiter_id = toInt(req.query.recruiter_id);
+  const { id: job_id } = req.params;
+  const { id: recruiter_id, role } = req.user;
 
-  if (!recruiter_id) {
-    return res.status(400).json({ success: false, message: "Recruiter ID required" });
-  }
+  // First, find the job and check ownership
+  let findSql = "SELECT logo, recruiter_id FROM job_posts WHERE id = ?";
+  let findParams = [job_id];
 
-  // First fetch old job for old logo path
-  db.query(
-    "SELECT logo FROM job_posts WHERE id = ? AND recruiter_id = ?",
-    [id, recruiter_id],
-    (err, results) => {
-      if (err || results.length === 0) {
+  db.query(findSql, findParams, (err, results) => {
+    if (err) return res.status(500).json({ success: false, message: "Database error." });
+    if (results.length === 0) {
         return res.status(404).json({ success: false, message: "Job not found" });
-      }
-
-      const oldLogo = results[0].logo;
-      let logoPath = oldLogo;
-
-      // If new logo uploaded → replace and delete old one
-      if (req.file) {
-        logoPath = `uploads/${req.file.filename}`;
-        const oldPath = oldLogo ? path.join(__dirname, "../", oldLogo) : null;
-        if (oldPath && fs.existsSync(oldPath)) {
-          fs.unlinkSync(oldPath);
-        }
-      }
-
-      const sql = `UPDATE job_posts SET 
-        company=?, title=?, location=?, job_type=?, package_ctc=?, status=?, description=?, 
-        skills=?, relocate=?, crit10=?, crit12=?, critUg=?, expMin=?, expMax=?, logo=? 
-        WHERE id=? AND recruiter_id=?`;
-
-      const values = [
-        req.body.company,
-        req.body.title,
-        req.body.location,
-        req.body.job_type,
-        req.body.package_ctc,
-        req.body.status,
-        req.body.description,
-        req.body.skills,
-        req.body.relocate,
-        toInt(req.body.crit10),
-        toInt(req.body.crit12),
-        toInt(req.body.critUg),
-        toInt(req.body.expMin),
-        toInt(req.body.expMax),
-        logoPath,
-        id,
-        recruiter_id,
-      ];
-
-      db.query(sql, values, (err2, result) => {
-        if (err2) {
-          return res.status(500).json({ success: false, message: err2.message });
-        }
-        if (result.affectedRows === 0) {
-          return res.status(400).json({ success: false, message: "Update failed" });
-        }
-        res.json({ success: true, message: "Job updated successfully" });
-      });
     }
-  );
+
+    const job = results[0];
+    
+    // --- SECURITY CHECK ---
+    // Allow if user is admin OR they own this job post
+    if (role !== 'admin' && job.recruiter_id !== recruiter_id) {
+        return res.status(403).json({ success: false, message: "Access denied: You do not own this job post." });
+    }
+    // --- END SECURITY CHECK ---
+
+    const oldLogo = job.logo;
+    let logoPath = oldLogo;
+
+    if (req.file) {
+      logoPath = `uploads/${req.file.filename}`;
+      const oldPath = oldLogo ? path.join(__dirname, "../", oldLogo) : null;
+      if (oldPath && fs.existsSync(oldPath)) {
+        fs.unlinkSync(oldPath);
+      }
+    }
+
+    const sql = `UPDATE job_posts SET 
+      company=?, title=?, location=?, job_type=?, package_ctc=?, status=?, description=?, 
+      skills=?, relocate=?, crit10=?, crit12=?, critUg=?, expMin=?, expMax=?, logo=? 
+      WHERE id=?`;
+
+    const values = [
+      req.body.company,
+      req.body.title,
+      req.body.location,
+      req.body.job_type,
+      req.body.package_ctc,
+      req.body.status,
+      req.body.description,
+      req.body.skills,
+      req.body.relocate,
+      toInt(req.body.crit10),
+      toInt(req.body.crit12),
+      toInt(req.body.critUg),
+      toInt(req.body.expMin),
+      toInt(req.body.expMax),
+      logoPath,
+      job_id, // Update based on job_id
+    ];
+
+    db.query(sql, values, (err2, result) => {
+      if (err2) {
+        return res.status(500).json({ success: false, message: err2.message });
+      }
+      res.json({ success: true, message: "Job updated successfully" });
+    });
+  });
 });
 
 // ------------------ DELETE JOB ------------------
+// Now checks ownership
 router.delete("/:id", (req, res) => {
-  const { id } = req.params;
-  const recruiter_id = toInt(req.query.recruiter_id);
+  const { id: job_id } = req.params;
+  const { id: recruiter_id, role } = req.user;
 
   db.query(
-    "SELECT logo FROM job_posts WHERE id = ? AND recruiter_id = ?",
-    [id, recruiter_id],
+    "SELECT logo, recruiter_id FROM job_posts WHERE id = ?",
+    [job_id],
     (err, results) => {
-      if (err || results.length === 0)
-        return res.status(400).json({ success: false, message: "Job not found" });
+      if (err) return res.status(500).json({ success: false, message: "Database error." });
+      if (results.length === 0)
+        return res.status(404).json({ success: false, message: "Job not found" });
 
-      const logoPath = results[0].logo;
+      const job = results[0];
 
-      db.query(
-        "DELETE FROM job_posts WHERE id = ? AND recruiter_id = ?",
-        [id, recruiter_id],
-        (err2) => {
-          if (err2) return res.status(500).json({ success: false, message: err2.message });
+      // --- SECURITY CHECK ---
+      if (role !== 'admin' && job.recruiter_id !== recruiter_id) {
+        return res.status(403).json({ success: false, message: "Access denied." });
+      }
+      // --- END SECURITY CHECK ---
 
-          // Delete logo file if exists
-          if (logoPath && fs.existsSync(logoPath)) {
-            fs.unlinkSync(logoPath);
-          }
+      const logoPath = job.logo;
+      const fullLogoPath = logoPath ? path.join(__dirname, "../", logoPath) : null;
 
-          res.json({ success: true, message: "Job deleted successfully" });
+
+      db.query("DELETE FROM job_posts WHERE id = ?", [job_id], (err2) => {
+        if (err2) return res.status(500).json({ success: false, message: err2.message });
+
+        // Delete logo file if exists
+        if (fullLogoPath && fs.existsSync(fullLogoPath)) {
+          fs.unlinkSync(fullLogoPath);
         }
-      );
+
+        res.json({ success: true, message: "Job deleted successfully" });
+      });
     }
   );
 });

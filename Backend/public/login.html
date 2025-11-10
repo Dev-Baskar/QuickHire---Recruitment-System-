@@ -266,6 +266,8 @@
             position: relative;
         }
         .password-field input {
+            width: 100%;
+            box-sizing: border-box;
             padding-right: 40px;
         }
         .password-field .show-password-icon {
@@ -363,7 +365,7 @@
                     <input type="password" id="password" placeholder="Enter your password" required>
                     <i class="fas fa-eye-slash show-password-icon" onclick="togglePasswordVisibility('password')"></i>
                 </div>
-
+                
                 <div class="forgot-password-link">
                     <a href="#" onclick="openForgotPasswordForm()">Forgot password?</a>
                 </div>
@@ -429,9 +431,8 @@
         let forgotPasswordContainer = document.getElementById("forgotPasswordContainer");
         let debounceTimeout = null;
         
-        // This is not needed, as the username is stored in the input field
-        // let forgotPasswordUsername = ''; 
-
+        // (All other functions like selectRole, goBack, etc., are unchanged)
+        
         function selectRole(role) {
             selectedRole = role;
             roleSelection.style.display = "none";
@@ -506,7 +507,7 @@
             }, 500);
         }
 
-        // --- THIS IS THE FIXED USERNAME CHECK ---
+        // --- All password reset functions are unchanged ---
         document.getElementById("forgotUsername").addEventListener('input', (e) => {
             const username = e.target.value.trim();
             const msgEl = document.getElementById("usernameForgotMsg");
@@ -521,13 +522,9 @@
             }
 
             debounceTimeout = setTimeout(async () => {
-                // We call your EXISTING check-username route
                 const res = await fetch(`${API_BASE}/check-username/${username}?role=${selectedRole}`);
                 const data = await res.json();
                 
-                // data.available will be TRUE if username is NOT in use (new user)
-                // data.available will be FALSE if username IS in use (existing user)
-                // For password reset, we want the user to EXIST, so we check for `!data.available`
                 if (data.success && !data.available) {
                     msgEl.textContent = '✅ Username found.';
                     msgEl.classList.remove('bad');
@@ -541,8 +538,6 @@
                 }
             }, 500);
         });
-        // --- END OF FIX ---
-
         const otpInputs = document.querySelectorAll('#forgotStep2 .otp-inputs input');
         otpInputs.forEach((input, index) => {
             input.addEventListener('input', () => {
@@ -556,7 +551,6 @@
                 }
             });
         });
-
         function startResendCooldown(seconds) {
             const resendBtn = document.getElementById('resendOtpBtn');
             resendBtn.disabled = true;
@@ -573,8 +567,6 @@
                 }
             }, 1000);
         }
-
-        // STEP 1: Calls the new route /forgot-password-otp
         async function sendOtp() {
             const username = document.getElementById("forgotUsername").value;
             const res = await fetch(`${API_BASE}/forgot-password-otp`, {
@@ -593,14 +585,11 @@
                 showPopup(data.error || '❌ An error occurred. Please try again.', "bad");
             }
         }
-        
-        // STEP 2: Calls the new route /verify-otp-for-reset
         async function verifyOtp() {
             const otpInputs = document.querySelectorAll('#forgotStep2 .otp-inputs input');
             const otp = Array.from(otpInputs).map(input => input.value).join('');
             const username = document.getElementById('forgotUsername').value;
 
-            // Calls the new route we created
             const res = await fetch(`${API_BASE}/verify-otp-for-reset`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -616,21 +605,18 @@
                 showPopup(data.error || '❌ Invalid OTP. Please try again.', 'bad');
             }
         }
-        
         const newPasswordInput = document.getElementById('newPassword');
         const confirmNewPasswordInput = document.getElementById('confirmNewPassword');
         const passwordMatchMsg = document.getElementById('newPasswordMatchMsg');
         const resetPasswordBtn = document.getElementById('resetPasswordBtn');
-
         function checkNewPasswordMatch() {
             if (newPasswordInput.value === '' && confirmNewPasswordInput.value === '') {
                 passwordMatchMsg.textContent = '';
                 resetPasswordBtn.disabled = true;
                 return;
             }
-            // Add a password strength check (optional but recommended)
             if (newPasswordInput.value.length < 6) {
-                 passwordMatchMsg.textContent = '❌ Password must be at least 6 characters.';
+                 passwordMatchMsg.textContent = '❌ Password atleast 6 characters.';
                  passwordMatchMsg.classList.remove('ok');
                  passwordMatchMsg.classList.add('bad');
                  resetPasswordBtn.disabled = true;
@@ -642,7 +628,7 @@
                 passwordMatchMsg.classList.add('ok');
                 resetPasswordBtn.disabled = false;
             } else {
-                passwordMatchMsg.textContent = '❌ Passwords do not match.';
+                passwordMatchMsg.textContent = '❌ Passwords does not match.';
                 passwordMatchMsg.classList.remove('ok');
                 passwordMatchMsg.classList.add('bad');
                 resetPasswordBtn.disabled = true;
@@ -650,14 +636,11 @@
         }
         newPasswordInput.addEventListener('input', checkNewPasswordMatch);
         confirmNewPasswordInput.addEventListener('input', checkNewPasswordMatch);
-
-        // STEP 3: Calls the modified /reset-password route
         async function resetPassword() {
             const username = document.getElementById('forgotUsername').value;
             const newPassword = document.getElementById('newPassword').value;
             const role = selectedRole;
 
-            // This route now works with username and newPassword
             const res = await fetch(`${API_BASE}/reset-password`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -668,15 +651,16 @@
             if (data.success) {
                 showPopup('✅ Password reset successfully. Please log in.', 'ok');
                 setTimeout(() => {
-                    // Reload the page to go back to the start
                     window.location.reload(); 
                 }, 1500);
             } else {
                 showPopup(data.error || '❌ Failed to reset password. Please try again.', 'bad');
             }
         }
+        // --- End of password reset functions ---
 
-        // Your existing login function (no changes needed)
+
+        // --- REPLACED: login() function ---
         async function login() {
             const username = document.getElementById("username").value;
             const password = document.getElementById("password").value;
@@ -695,22 +679,27 @@
             const data = await res.json();
 
             if (data.success) {
+                // --- THIS IS THE KEY CHANGE ---
+                // Save all details to localStorage
                 localStorage.setItem("token", data.token);
                 localStorage.setItem("role", data.role);
                 localStorage.setItem("userId", data.id);
+                localStorage.setItem("status", data.status); // <-- SAVE STATUS
+                // --- END OF CHANGE ---
 
-                showPopup("✅ Login successful!");
+                // Show the toast popup as requested
+                showPopup("✅ Login successful! Redirecting...");
+                
                 setTimeout(() => {
-                    // MODIFIED: Check for admin role as well
-                    if (data.role === "admin") {
-                        window.location.href = "recruiter-dashboard.html"; // (Assuming you have this page)
-                    } else if (data.role === "recruiter") {
+                    // Redirect all admins/recruiters to the dashboard page
+                    if (data.role === "admin" || data.role === "recruiter") {
                         window.location.href = "recruiter-dashboard.html";
                     } else {
-                        window.location.href = "index.html";
+                        window.location.href = "index.html"; // Jobseeker
                     }
                 }, 1500);
             } else {
+                // Show toast popup for error, as requested
                 showPopup('❌ Invalid login. Please check your username and password.', "bad");
             }
         }
