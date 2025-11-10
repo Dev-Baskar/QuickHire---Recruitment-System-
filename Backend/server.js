@@ -9,6 +9,16 @@ const fs = require("fs");
 
 const app = express();
 
+// ... existing code ...
+app.use(express.static(path.join(__dirname, "public")));
+
+// New route for admin verification page
+app.get("/admin-verification.html", (req, res) => {
+    res.sendFile(path.join(__dirname, "public", "admin-verification.html"));
+});
+
+// ... existing code ...
+
 // ✅ Ensure uploads folder exists
 const uploadDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadDir)) {

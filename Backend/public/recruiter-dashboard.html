@@ -87,7 +87,7 @@
 </head>
 <body>
 
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <h2>QuickHire</h2>
     <ul class="nav">
       <li class="active">Dashboard</li>
@@ -97,7 +97,7 @@
       <li>SAS Process</li>
       <li>Invite History</li>
       <li>Company List</li>
-      <li>Company Verification</li>
+      <li onclick="location.href='admin-verification.html'">Company Verification</li>
       <li>Admin</li>
       <li>Account</li>
     </ul>
@@ -140,106 +140,175 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-const API_BASE = "http://localhost:5000/api/dashboard";
-const recruiter_id = 1;
+  const API_BASE = "http://localhost:5000/api/dashboard";
+const AUTH_API_BASE = "http://localhost:5000/api/auth";
+
+let userRole;
+let userStatus;
 
 // Animation function
 function animateCountUp(elementId, targetValue, duration = 500) {
-  const element = document.getElementById(elementId);
-  const startValue = parseInt(element.textContent, 10);
-  const startTime = performance.now();
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    const startValue = parseInt(element.textContent, 10);
+    const startTime = performance.now();
 
-  function updateCount(currentTime) {
-    const elapsedTime = currentTime - startTime;
-    const progress = Math.min(elapsedTime / duration, 1);
-    const currentValue = Math.floor(progress * targetValue);
-    element.textContent = currentValue;
+    function updateCount(currentTime) {
+        const elapsedTime = currentTime - startTime;
+        const progress = Math.min(elapsedTime / duration, 1);
+        const currentValue = Math.floor(progress * targetValue);
+        element.textContent = currentValue;
 
-    if (progress < 1) {
-      requestAnimationFrame(updateCount);
+        if (progress < 1) {
+            requestAnimationFrame(updateCount);
+        }
     }
-  }
+    requestAnimationFrame(updateCount);
+}
 
-  requestAnimationFrame(updateCount);
+// Function to decode JWT and get user info
+function getUserInfo() {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+    } catch (e) {
+        console.error("Failed to decode token", e);
+        return null;
+    }
+}
+
+// Function to render the dashboard based on user's role and status
+async function renderDashboard(userInfo) {
+    userRole = userInfo.role;
+    userStatus = userInfo.status;
+    
+    const sidebar = document.getElementById('sidebar');
+    const dashboardTitle = document.querySelector('.header h1');
+    const userRoleDisplay = document.querySelector('.user span');
+    const dashboardContent = document.querySelector('.content');
+
+    // Default state: hide everything
+    sidebar.style.display = 'none';
+    dashboardContent.innerHTML = '';
+    
+    if (userRole === 'admin') {
+        dashboardTitle.textContent = "Admin Dashboard";
+        userRoleDisplay.textContent = "Admin";
+        sidebar.style.display = 'flex';
+        // Add admin-specific sidebar items and routes here
+        
+    } else if (userRole === 'recruiter') {
+        if (userStatus === 'approved') {
+            dashboardTitle.textContent = "Recruiter Dashboard";
+            userRoleDisplay.textContent = "Recruiter";
+            sidebar.style.display = 'flex';
+            loadDashboard(userInfo.id);
+        } else {
+            // Unverified recruiter view
+            dashboardTitle.textContent = "Recruiter Dashboard";
+            userRoleDisplay.textContent = "Your company is under verification";
+            userRoleDisplay.style.color = "orange";
+            dashboardContent.innerHTML = `
+                <div style="text-align: center; padding: 50px;">
+                    <h2 style="color: orange;">Your company registration is under verification.</h2>
+                    <p>Please wait for an administrator to approve your account. We will notify you via email once your account is active.</p>
+                </div>
+            `;
+        }
+    }
 }
 
 // Load all dashboard data in parallel
-async function loadDashboard() {
-  try {
-    const [statsRes, appsPerJobRes, jobPostsOverTimeRes, appStatusRes] = await Promise.all([
-      fetch(`${API_BASE}/stats?recruiter_id=${recruiter_id}`),
-      fetch(`${API_BASE}/applications-per-job?recruiter_id=${recruiter_id}`),
-      fetch(`${API_BASE}/job-posts-over-time?recruiter_id=${recruiter_id}`),
-      fetch(`${API_BASE}/application-status?recruiter_id=${recruiter_id}`)
-    ]);
-
-    const statsData = await statsRes.json();
-    if (statsData.success && statsData.stats) {
-      animateCountUp("jobPostsCount", statsData.stats.jobPosts);
-      animateCountUp("applicationsCount", statsData.stats.applications);
-      animateCountUp("companiesCount", statsData.stats.companies);
-      animateCountUp("loginsCount", statsData.stats.logins);
-      animateCountUp("editRequestsCount", statsData.stats.editRequests);
-    } else {
-      console.error("Failed to load dashboard stats:", statsData.error || "Unknown error");
-    }
-
-    const appsPerJobData = await appsPerJobRes.json();
-    if (appsPerJobData.success && appsPerJobData.data) {
-      new Chart(document.getElementById("barChart"), {
-        type: "bar",
-        data: {
-          labels: appsPerJobData.data.map(r => r.jobTitle),
-          datasets: [{
-            label: "Applications",
-            data: appsPerJobData.data.map(r => r.applications),
-            backgroundColor: "rgba(26, 115, 232, 0.7)"
-          }]
-        },
-        options: { responsive: true, plugins: { legend: { display: false } } }
-      });
-    }
-
-    const jobPostsOverTimeData = await jobPostsOverTimeRes.json();
-    if (jobPostsOverTimeData.success && jobPostsOverTimeData.data) {
-      new Chart(document.getElementById("lineChart"), {
-        type: "line",
-        data: {
-          labels: jobPostsOverTimeData.data.map(r => r.month),
-          datasets: [{
-            label: "Job Posts",
-            data: jobPostsOverTimeData.data.map(r => r.count),
-            borderColor: "rgba(26, 115, 232, 1)",
-            backgroundColor: "rgba(26, 115, 232, 0.2)",
-            fill: true,
-            tension: 0.3
-          }]
+async function loadDashboard(recruiter_id) {
+    // This function will only be called for approved recruiters and admins
+    // You can keep the existing code for loading charts and stats here
+    try {
+        const [statsRes, appsPerJobRes, jobPostsOverTimeRes, appStatusRes] = await Promise.all([
+          fetch(`${API_BASE}/stats?recruiter_id=${recruiter_id}`),
+          fetch(`${API_BASE}/applications-per-job?recruiter_id=${recruiter_id}`),
+          fetch(`${API_BASE}/job-posts-over-time?recruiter_id=${recruiter_id}`),
+          fetch(`${API_BASE}/application-status?recruiter_id=${recruiter_id}`)
+        ]);
+    
+        const statsData = await statsRes.json();
+        if (statsData.success && statsData.stats) {
+          animateCountUp("jobPostsCount", statsData.stats.jobPosts);
+          animateCountUp("applicationsCount", statsData.stats.applications);
+          animateCountUp("companiesCount", statsData.stats.companies);
+          animateCountUp("loginsCount", statsData.stats.logins);
+          animateCountUp("editRequestsCount", statsData.stats.editRequests);
+        } else {
+          console.error("Failed to load dashboard stats:", statsData.error || "Unknown error");
         }
-      });
-    }
-
-    const appStatusData = await appStatusRes.json();
-    if (appStatusData.success && appStatusData.data) {
-      new Chart(document.getElementById("pieChart"), {
-        type: "pie",
-        data: {
-          labels: appStatusData.data.map(r => r.status),
-          datasets: [{
-            data: appStatusData.data.map(r => r.count),
-            backgroundColor: ["#28a745", "#dc3545", "#ffc107"]
-          }]
+    
+        const appsPerJobData = await appsPerJobRes.json();
+        if (appsPerJobData.success && appsPerJobData.data) {
+          new Chart(document.getElementById("barChart"), {
+            type: "bar",
+            data: {
+              labels: appsPerJobData.data.map(r => r.jobTitle),
+              datasets: [{
+                label: "Applications",
+                data: appsPerJobData.data.map(r => r.applications),
+                backgroundColor: "rgba(26, 115, 232, 0.7)"
+              }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+          });
         }
-      });
-    }
-
-  } catch (error) {
-    console.error("Failed to load dashboard data:", error);
-  }
+    
+        const jobPostsOverTimeData = await jobPostsOverTimeRes.json();
+        if (jobPostsOverTimeData.success && jobPostsOverTimeData.data) {
+          new Chart(document.getElementById("lineChart"), {
+            type: "line",
+            data: {
+              labels: jobPostsOverTimeData.data.map(r => r.month),
+              datasets: [{
+                label: "Job Posts",
+                data: jobPostsOverTimeData.data.map(r => r.count),
+                borderColor: "rgba(26, 115, 232, 1)",
+                backgroundColor: "rgba(26, 115, 232, 0.2)",
+                fill: true,
+                tension: 0.3
+              }]
+            }
+          });
+        }
+    
+        const appStatusData = await appStatusRes.json();
+        if (appStatusData.success && appStatusData.data) {
+          new Chart(document.getElementById("pieChart"), {
+            type: "pie",
+            data: {
+              labels: appStatusData.data.map(r => r.status),
+              datasets: [{
+                data: appStatusData.data.map(r => r.count),
+                backgroundColor: ["#28a745", "#dc3545", "#ffc107"]
+              }]
+            }
+          });
+        }
+    
+      } catch (error) {
+        console.error("Failed to load dashboard data:", error);
+      }
 }
 
-// Initialize dashboard
-loadDashboard();
+// Initialize dashboard with user info
+document.addEventListener('DOMContentLoaded', () => {
+    const userInfo = getUserInfo();
+    if (userInfo) {
+        renderDashboard(userInfo);
+    } else {
+        window.location.href = 'login.html';
+    }
+});
 </script>
-
 </body>
 </html>

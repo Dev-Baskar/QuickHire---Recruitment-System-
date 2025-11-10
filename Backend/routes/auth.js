@@ -7,7 +7,7 @@ const nodemailer = require("nodemailer");
 const multer = require('multer');
 const path = require('path');
 
-// Multer configuration
+// Multer configuration for file uploads
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, 'uploads/');
@@ -27,6 +27,7 @@ const transporter = nodemailer.createTransport({
     },
 });
 
+// otpStore will now use USERNAME as the key for password resets
 let otpStore = {};
 
 // Send OTP for registration
@@ -37,7 +38,10 @@ router.post("/send-otp-email", (req, res) => {
     }
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
     const expires = new Date(Date.now() + 10 * 60000);
+    
+    // Store by email for registration
     otpStore[email] = { otp, expires, role };
+    
     transporter.sendMail({
         from: `QuickHire <${process.env.GMAIL_USER}>`,
         to: email,
@@ -57,13 +61,13 @@ router.post("/verify-otp-email", (req, res) => {
     const { email, otp } = req.body;
     const storedOtp = otpStore[email];
     if (storedOtp && storedOtp.otp === otp && new Date() < storedOtp.expires) {
-        delete otpStore[email];
+        delete otpStore[email]; // Clear OTP after use
         return res.json({ success: true, message: "OTP verified." });
     }
     res.status(400).json({ success: false, error: "Invalid or expired OTP." });
 });
 
-// Check username availability
+// Check username availability (Your login.html needs this)
 router.get("/check-username/:username", (req, res) => {
     const { username } = req.params;
     const { role } = req.query;
@@ -136,8 +140,9 @@ router.post("/register/recruiter", upload.single('company_logo'), async (req, re
     }
 });
 
-// ✅ MODIFIED: Universal Login now includes status in the JWT token
+// Universal Login with status check
 router.post("/login", (req, res) => {
+    // ... (Your existing login code is fine, no changes needed here) ...
     const { username, password, role } = req.body;
     if (!username || !password || !role) {
         return res.status(400).json({ success: false, error: "Username, password, and role are required." });
@@ -156,11 +161,11 @@ router.post("/login", (req, res) => {
         const tokenPayload = { 
             id: user.id, 
             role: userRole,
-            status: user.status || 'approved' // Admins/Jobseekers are always 'approved'
+            status: user.status || 'approved'
         };
 
         const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "1h" });
-        res.json({ success: true, token, role: userRole, id: user.id });
+        res.json({ success: true, token, role: userRole, id: user.id, status: user.status });
     };
 
     if (role === 'jobseeker') {
@@ -185,5 +190,128 @@ router.post("/login", (req, res) => {
         });
     }
 });
+
+// Admin routes (Your existing code is fine)
+router.get('/admin/recruiters/pending', (req, res) => {
+    // ... (no changes) ...
+    const sql = `SELECT id, company_name, administrator_name, email, phone, company_logo FROM recruiters WHERE status = 'pending'`;
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ success: false, error: "Database error." });
+        }
+        res.json({ success: true, pendingRecruiters: results });
+    });
+});
+router.post('/admin/recruiters/update-status', (req, res) => {
+    // ... (no changes) ...
+    const { id, status } = req.body;
+    if (!['approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ success: false, error: "Invalid status provided." });
+    }
+    const sql = `UPDATE recruiters SET status = ? WHERE id = ?`;
+    db.query(sql, [status, id], (err, result) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ success: false, error: "Database error." });
+        }
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, error: "Recruiter not found." });
+        }
+        res.json({ success: true, message: `Recruiter status updated to ${status}.` });
+    });
+});
+
+
+// --- NEW PASSWORD RESET ROUTES ---
+// These routes match your login.html's 3-step flow
+
+// STEP 1: Send OTP for password reset (called by your `sendOtp()` function)
+router.post("/forgot-password-otp", (req, res) => {
+    const { username, role } = req.body;
+    if (!username || !role) {
+        return res.status(400).json({ success: false, error: "Username and role are required." });
+    }
+
+    const tableName = role === 'jobseeker' ? 'jobseekers' : 'recruiters';
+    const sql = `SELECT email FROM ${tableName} WHERE username = ?`;
+
+    db.query(sql, [username], (err, users) => {
+        if (err) return res.status(500).json({ success: false, error: "Database error." });
+        if (users.length === 0) {
+            return res.status(404).json({ success: false, error: "User not found." });
+        }
+
+        const email = users[0].email;
+        const otp = Math.floor(1000 + Math.random() * 9000).toString();
+        const expires = new Date(Date.now() + 10 * 60000); // 10 minute expiry
+        
+        // Store OTP by USERNAME
+        otpStore[username] = { otp, expires, role, verified: false };
+
+        transporter.sendMail({
+            from: `QuickHire <${process.env.GMAIL_USER}>`,
+            to: email,
+            subject: `Your QuickHire Password Reset OTP`,
+            text: `Your OTP for password reset is: ${otp}. It will expire in 10 minutes.`
+        }, (mailErr) => {
+            if (mailErr) {
+                console.error("Reset email send failed:", mailErr);
+                return res.status(500).json({ success: false, error: "Failed to send email." });
+            }
+            res.json({ success: true, message: "OTP sent to your registered email." });
+        });
+    });
+});
+
+// STEP 2: Verify OTP (called by your `verifyOtp()` function)
+router.post("/verify-otp-for-reset", (req, res) => {
+    const { username, otp } = req.body;
+    const storedOtpData = otpStore[username];
+
+    if (!storedOtpData) {
+        return res.status(400).json({ success: false, error: "Invalid OTP. Please request a new one." });
+    }
+
+    if (storedOtpData.otp === otp && new Date() < storedOtpData.expires) {
+        otpStore[username].verified = true; // Mark as verified
+        return res.json({ success: true, message: "OTP verified." });
+    }
+    
+    res.status(400).json({ success: false, error: "Invalid or expired OTP." });
+});
+
+// STEP 3: Reset the password (called by your `resetPassword()` function)
+router.post("/reset-password", async (req, res) => {
+    const { username, newPassword, role } = req.body;
+    const storedOtpData = otpStore[username];
+
+    // Check if user is verified from Step 2
+    if (!storedOtpData || !storedOtpData.verified) {
+        return res.status(400).json({ success: false, error: "OTP not verified. Please complete the previous step." });
+    }
+    
+    // Check if role matches
+    if (storedOtpData.role !== role) {
+         return res.status(400).json({ success: false, error: "Role mismatch." });
+    }
+
+    try {
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        const tableName = role === 'jobseeker' ? 'jobseekers' : 'recruiters';
+        const sql = `UPDATE ${tableName} SET password = ? WHERE username = ?`;
+
+        db.query(sql, [hashedPassword, username], (err, result) => {
+            if (err) return res.status(500).json({ success: false, error: "Database error." });
+            
+            delete otpStore[username]; // Clean up the used OTP
+            res.json({ success: true, message: "Password has been reset successfully." });
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: "Server error." });
+    }
+});
+// --- END OF NEW ROUTES ---
+
 
 module.exports = router;

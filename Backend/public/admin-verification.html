@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Company Verification - QuickHire</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* --- Base Dashboard Styles --- */
+    :root {
+      --primary: #1a73e8;
+      --dark: #263238;
+      --light: #ECEFF1;
+      --card-bg: #fff;
+      --text: #455A64;
+      --success: #28a745;
+      --danger: #dc3545;
+      --warning: #ffc107;
+      --radius: 8px;
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Segoe UI", Roboto, sans-serif; display: flex; height: 100vh; background: var(--light); color: var(--text); }
+    
+    /* Sidebar (Copied from Dashboard) */
+    .sidebar { width: 205px; background: var(--dark); color: #fff; display: flex; flex-direction: column; padding: 20px 0; box-shadow: var(--shadow); flex-shrink: 0; }
+    .sidebar h2 { text-align: center; margin-bottom: 20px; font-size: 24px; color: var(--primary); font-weight: 700; }
+    .nav { list-style: none; flex-grow: 1; }
+    .nav li { padding: 14px 24px; cursor: pointer; transition: 0.2s; }
+    .nav li:hover, .nav li.active { background: #37474F; border-left: 4px solid var(--primary); }
+
+    /* Main content (Copied from Dashboard) */
+    .main { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .header { height: 60px; background: #fff; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; flex-shrink: 0; }
+    .header h1 { font-size: 24px; color: var(--text); }
+    .user { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .user span { font-weight: 600; }
+    .user img { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--primary); }
+    .content { padding: 20px; overflow-y: auto; flex-grow: 1; }
+
+    /* --- Page-Specific Styles for Verification --- */
+
+    /* --- MODIFIED: Use Flexbox for the grid --- */
+    .company-grid {
+        display: flex;     /* Use flexbox */
+        flex-wrap: wrap;   /* Allow cards to wrap to the next line */
+        gap: 20px;         /* Keep the 20px gap */
+    }
+
+    /* Professional Card Design */
+    .verification-card {
+        background: #fff;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.2s, box-shadow 0.2s;
+        
+        /* --- MODIFIED: Set a fixed base width --- */
+        width: 350px; /* Each card will be 350px wide */
+        /* This prevents 2 cards from stretching to fill the whole row */
+    }
+    /* --- End of Modification --- */
+    
+    .verification-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+    }
+    
+    .card-content {
+        padding: 20px;
+        flex-grow: 1;
+    }
+    .card-content img {
+        width: 60px;
+        height: 60px;
+        border-radius: 8px;
+        object-fit: cover;
+        border: 1px solid #eee;
+        margin-bottom: 15px;
+    }
+    .card-content h4 {
+        margin: 0 0 8px;
+        font-size: 20px;
+        color: var(--dark);
+    }
+    .card-content p {
+        margin: 4px 0;
+        font-size: 14px;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .card-content p i {
+        color: #999;
+        width: 14px;
+        text-align: center;
+    }
+    
+    /* Card Actions (Approve/Reject) */
+    .card-actions {
+        display: flex;
+        border-top: 1px solid #eee;
+        background: #fdfdfd;
+        border-bottom-left-radius: var(--radius);
+        border-bottom-right-radius: var(--radius);
+    }
+    .card-actions button {
+        flex: 1;
+        padding: 15px;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: background-color 0.2s;
+    }
+    .btn-approve {
+        background-color: transparent;
+        color: var(--success);
+        border-right: 1px solid #eee;
+        border-bottom-left-radius: var(--radius);
+    }
+    .btn-approve:hover { background-color: #e6f7ea; }
+    .btn-reject {
+        background-color: transparent;
+        color: var(--danger);
+        border-bottom-right-radius: var(--radius);
+    }
+    .btn-reject:hover { background-color: #fde8e8; }
+
+    #no-pending-requests {
+        text-align: center;
+        font-size: 1.2em;
+        color: #607D8B;
+        margin-top: 50px;
+    }
+  </style>
+</head>
+<body>
+
+  <aside class="sidebar" id="sidebar">
+    <h2>QuickHire</h2>
+    <ul class="nav">
+      <li onclick="location.href='recruiter-dashboard.html'">Dashboard</li>
+      <li onclick="location.href='recruiter-jobposts.html'">Job Posts</li>
+      <li onclick="location.href='recruiter-applications.html'">Applications</li>
+      <li>Meetings</li>
+      <li>SAS Process</li>
+      <li>Invite History</li>
+      <li id="nav-company-list">Company List</li>
+      <li id="nav-company-verification" class="active" onclick="location.href='company-verification.html'">Company Verification</li>
+      <li id="nav-admin">Admin</li>
+      <li>Account</li>
+      <li id="nav-logout" onclick="logout()">Logout</li>
+    </ul>
+  </aside>
+
+  <div class="main">
+    <header class="header">
+      <h1>Company Verification</h1>
+      <div class="user">
+        <span id="user-role-text">Admin</span>
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'%3E%3Cpath fill='%23ccc' d='M16 16c4.4 0 8-3.6 8-8s-3.6-8-8-8-8 3.6-8 8 3.6 8 8 8zm0 4c-5.9 0-12 2.9-12 6v2c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2v-2c0-3.1-6.1-6-12-6z'/%3E%3C/svg%3E" alt="User">
+      </div>
+    </header>
+
+    <section class="content">
+      <div id="company-grid" class="company-grid">
+        </div>
+      
+      <div id="no-pending-requests" style="display: none;">No pending verification requests.</div>
+    </section>
+  </div>
+
+
+  <script>
+    const API_BASE = "http://localhost:5000/api/auth";
+    const token = localStorage.getItem('token');
+    const userRole = localStorage.getItem('role');
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Security Check: Only admins can see this page
+        if (!token || userRole !== 'admin') {
+            alert('Access Denied. You must be an admin to view this page.');
+            window.location.href = 'recruiter-dashboard.html'; // Send non-admins back
+            return;
+        }
+        
+        // User is an admin, set up the page
+        document.getElementById('user-role-text').textContent = 'Admin';
+        
+        // Load the pending recruiters
+        fetchPendingRecruiters();
+    });
+
+    function logout() {
+        localStorage.clear();
+        window.location.href = 'login.html';
+    }
+
+    async function fetchPendingRecruiters() {
+        try {
+            const response = await fetch(`${API_BASE}/admin/recruiters/pending`, {
+                headers: {
+                    'Authorization': `Bearer ${token}` // Send the token
+                }
+            });
+
+            if (response.status === 401) {
+                alert('Session expired. Please log in again.');
+                logout();
+                return;
+            }
+
+            const data = await response.json();
+            const gridContainer = document.getElementById('company-grid');
+            const noRequestsMessage = document.getElementById('no-pending-requests');
+            gridContainer.innerHTML = '';
+
+            if (data.success && data.pendingRecruiters.length > 0) {
+                noRequestsMessage.style.display = 'none';
+                data.pendingRecruiters.forEach(recruiter => {
+                    const card = createRecruiterCard(recruiter);
+                    gridContainer.appendChild(card);
+                });
+            } else {
+                noRequestsMessage.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Error fetching pending recruiters:', error);
+        }
+    }
+
+    function createRecruiterCard(recruiter) {
+        const card = document.createElement('div');
+        card.className = 'verification-card';
+
+        // Fix image path
+        const logoPath = recruiter.company_logo 
+            ? `/${recruiter.company_logo}` // Add leading slash
+            : 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27%3E%3Cpath fill=%27%23CCC%27 d=%27M4 4h16v16H4z%27 /%3E%3C/svg%3E'; // Valid placeholder
+
+        card.innerHTML = `
+            <div class="card-content">
+                <img src="${logoPath}" alt="Company Logo">
+                <h4>${recruiter.company_name}</h4>
+                <p><i class="fas fa-user-shield"></i> ${recruiter.administrator_name}</p>
+                <p><i class="fas fa-envelope"></i> ${recruiter.email}</p>
+                <p><i class="fas fa-phone"></i> ${recruiter.phone || 'N/A'}</p>
+            </div>
+            <div class="card-actions">
+                <button class="btn-reject" onclick="updateRecruiterStatus(${recruiter.id}, 'rejected')">Reject</button>
+                <button class="btn-approve" onclick="updateRecruiterStatus(${recruiter.id}, 'approved')">Approve</button>
+            </div>
+        `;
+
+        // Stop the click event from bubbling up from the buttons
+        card.querySelector('.btn-approve').addEventListener('click', (e) => e.stopPropagation());
+        card.querySelector('.btn-reject').addEventListener('click', (e) => e.stopPropagation());
+
+        return card;
+    }
+
+    async function updateRecruiterStatus(id, status) {
+        // Add a confirmation popup
+        if (!confirm(`Are you sure you want to ${status} this recruiter?`)) {
+            return; // Stop if the admin clicks "Cancel"
+        }
+      
+        try {
+            const response = await fetch(`${API_BASE}/admin/recruiters/update-status`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` // Send token
+                },
+                body: JSON.stringify({ id, status })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                alert(`Recruiter has been ${status}.`);
+                fetchPendingRecruiters(); // Refresh the list
+            } else {
+                alert(`Failed to update status: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Error updating status:', error);
+            alert('An error occurred while updating the status.');
+        }
+    }
+  </script>
+</body>
+</html>
