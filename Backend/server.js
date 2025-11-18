@@ -37,7 +37,7 @@ app.use("/api/dashboard", authMiddleware, require("./routes/dashboard"));
 app.use("/api/applications", authMiddleware, require("./routes/applications"));
 // --- End of Modification ---
 
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;
 
 // ✅ Check DB connection before starting server
 db.query("SELECT 1", (err) => {
